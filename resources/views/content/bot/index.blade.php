@@ -114,10 +114,10 @@
                                 <button class="btn btn-sm btn-icon btn-outline-warning" data-bs-toggle="modal" data-bs-target="#modalEdit{{ $r->id }}">
                                     <i class="bx bx-edit"></i>
                                 </button>
-                                <form action="{{ route('bot.destroy', $r->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Hapus respon ini?')">
+                                <form action="{{ route('bot.destroy', $r->id) }}" method="POST" class="d-inline">
                                     @csrf
                                     @method('DELETE')
-                                    <button class="btn btn-sm btn-icon btn-outline-danger">
+                                    <button type="button" class="btn btn-sm btn-icon btn-outline-danger btn-delete" title="Hapus Respon">
                                         <i class="bx bx-trash"></i>
                                     </button>
                                 </form>
@@ -206,6 +206,7 @@
 @endsection
 
 @section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -215,6 +216,29 @@
                 placeholder: "-- Menu Utama --"
             });
         }
+
+        // SweetAlert Confirmation for Delete Bot Response
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const form = this.closest('form');
+                
+                Swal.fire({
+                    title: 'Hapus Respon Bot?',
+                    text: "Apakah Anda yakin ingin menghapus respon otomatis untuk kata kunci ini?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff3e1d',
+                    cancelButtonColor: '#8592a3',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        });
     });
 </script>
 @endsection

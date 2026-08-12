@@ -33,9 +33,9 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const app  = express();
 app.use(express.json({ limit: '50mb' }));
 
-const PORT         = process.env.BOT_PORT   || 3000;
-const BOT_SECRET   = process.env.BOT_SECRET || 'rozitech-bot-secret-2024';
-const LARAVEL_URL  = process.env.APP_URL    || 'http://127.0.0.1:8000';
+const PORT             = process.env.BOT_PORT   || 3000;
+const BOT_SECRET       = process.env.BOT_SECRET || 'rozitech-bot-secret-2024';
+const LARAVEL_URL      = process.env.APP_URL    || 'http://127.0.0.1:8000';
 const ALLOWED_SESSIONS = (process.env.ALLOWED_SESSIONS || 'main').split(',').map(s => s.trim());
 const SESSIONS_PATH = path.resolve(__dirname, 'sessions');
 
@@ -73,6 +73,39 @@ function closeSock(cleanId) {
         try { old.ev.removeAllListeners(); old.end?.(); } catch(_) {}
         sessions.delete(cleanId);
     }
+}
+
+// ─── Laravel HTTP Helper (with retry on DNS/connection errors) ────────────────
+// Retries up to 3 times with exponential backoff when DNS resolution fails
+// (EAI_AGAIN, ENOTFOUND) or the connection drops — keeps working through
+// transient network hiccups without falling back to a different host.
+const RETRYABLE_CODES = ['EAI_AGAIN', 'ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'];
+const RETRY_DELAYS    = [2000, 5000, 10000]; // ms between attempts 1→2, 2→3, 3→fail
+
+async function laravelPost(path, data, options = {}) {
+    const defaultOpts = { headers: { 'X-Bot-Secret': BOT_SECRET }, timeout: 30000, ...options };
+    const url         = `${LARAVEL_URL}${path}`;
+    let lastErr;
+
+    for (let attempt = 0; attempt <= RETRY_DELAYS.length; attempt++) {
+        try {
+            return await axiosInstance.post(url, data, defaultOpts);
+        } catch (err) {
+            lastErr = err;
+            const isRetryable = RETRYABLE_CODES.includes(err.code) ||
+                                 err.message.includes('getaddrinfo') ||
+                                 err.message.includes('Connection Closed') ||
+                                 err.message.includes('socket hang up');
+
+            if (!isRetryable || attempt === RETRY_DELAYS.length) break;
+
+            const delay = RETRY_DELAYS[attempt];
+            console.warn(`[HTTP] ${err.code || err.message} on ${path} — retry ${attempt + 1}/${RETRY_DELAYS.length} in ${delay}ms`);
+            await sleep(delay);
+        }
+    }
+
+    throw lastErr;
 }
 
 // ─── Core: Start Session ───────────────────────────────────────────────────────
@@ -140,14 +173,11 @@ async function startSession(id, opts = {}) {
     // Helper: Lapor status ke Laravel
     const notifyLaravel = async (status) => {
         try {
-            await axiosInstance.post(`${LARAVEL_URL}/whatsapp/status`, {
+            await laravelPost('/whatsapp/status', {
                 sessionId: cleanId,
                 status: status,
                 user: sock.user || null
-            }, { 
-                headers: { 'X-Bot-Secret': BOT_SECRET },
-                timeout: 5000 
-            });
+            }, { timeout: 5000 });
         } catch (e) {
             console.error(`[STATUS] Gagal lapor status ke Laravel (${cleanId}): ${e.message}`);
         }
@@ -324,10 +354,7 @@ async function startSession(id, opts = {}) {
             };
 
             try {
-                const resp = await axiosInstance.post(`${LARAVEL_URL}/whatsapp/webhook`, payload, {
-                    headers: { 'X-Bot-Secret': BOT_SECRET },
-                    timeout: 30000
-                });
+                const resp = await laravelPost('/whatsapp/webhook', payload, { timeout: 30000 });
 
                 const data = resp.data;
                 console.log(`[WEBHOOK] Respon dari Laravel:`, JSON.stringify(data));
@@ -498,12 +525,97 @@ app.delete('/session/:id', requireSecret, async (req, res) => {
     res.json({ success: true, message: `Sesi ${cleanId} dihapus` });
 });
 
+// ─── Message Queueing to prevent rate limits & timeouts ───────────────────────
+const messageQueue = [];
+let isProcessingQueue = false;
+
+async function processQueue() {
+    if (isProcessingQueue) return;
+    isProcessingQueue = true;
+
+    while (messageQueue.length > 0) {
+        const item = messageQueue[0];
+        const { sock, jid, payload, resolve, reject, cleanPhone, isAsync } = item;
+
+        // Check if this sock is still connected; if not, wait for a reconnect (up to 30s)
+        let activeSock = sock;
+        const sessionId = [...sessions.entries()].find(([, s]) => s === sock)?.[0];
+        if (sessionId && sessionStates.get(sessionId)?.status !== 'open') {
+            console.log(`[QUEUE] Sesi sedang reconnect, menunggu... (${cleanPhone})`);
+            let waited = 0;
+            while (waited < 30000) {
+                await sleep(2000);
+                waited += 2000;
+                if (sessionStates.get(sessionId)?.status === 'open') {
+                    activeSock = sessions.get(sessionId);
+                    break;
+                }
+            }
+            if (sessionStates.get(sessionId)?.status !== 'open') {
+                console.error(`[QUEUE] Sesi tidak kunjung terhubung, melewati pesan ke ${cleanPhone}`);
+                messageQueue.shift();
+                if (!isAsync) reject(new Error('Session not available'));
+                continue;
+            }
+        }
+
+        let lastErr = null;
+        let sent = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                console.log(`[QUEUE] Sending message to ${cleanPhone}... (attempt ${attempt})`);
+                await activeSock.sendMessage(jid, payload);
+                console.log(`[QUEUE] Success to ${cleanPhone}`);
+                sent = true;
+                break;
+            } catch (e) {
+                lastErr = e;
+                const isRetryable = e.message.includes('Connection Closed') ||
+                                    e.message.includes('not-connected') ||
+                                    e.message.includes('Connection Failure');
+                console.error(`[QUEUE] Error to ${cleanPhone} (attempt ${attempt}): ${e.message}`);
+                if (!isRetryable || attempt === 3) break;
+                console.log(`[QUEUE] Retry in 5s...`);
+                await sleep(5000);
+                // Refresh sock reference in case session reconnected
+                if (sessionId && sessions.has(sessionId)) {
+                    activeSock = sessions.get(sessionId);
+                }
+            }
+        }
+
+        if (!isAsync) {
+            if (sent) resolve({ success: true, to: cleanPhone });
+            else reject(lastErr);
+        }
+
+        messageQueue.shift();
+        
+        // Anti-ban delay: 20 to 30 seconds
+        const delay = Math.floor(Math.random() * 10000) + 20000;
+        await sleep(delay);
+    }
+
+    isProcessingQueue = false;
+}
+
+function queueMessage(sock, jid, payload, cleanPhone, isAsync) {
+    return new Promise((resolve, reject) => {
+        messageQueue.push({ sock, jid, payload, resolve, reject, cleanPhone, isAsync });
+        if (isAsync) {
+            resolve({ success: true, queued: true, to: cleanPhone });
+        }
+        processQueue();
+    });
+}
+
 /**
  * POST /send-message — kirim pesan teks / file
- * Body: { phone, message, sessionId, media, filename, mimetype, url }
+ * Body: { phone, message, sessionId, media, filename, mimetype, url, async }
  */
 app.post('/send-message', requireSecret, async (req, res) => {
     const { phone, message, sessionId, media, filename, mimetype, url, caption } = req.body;
+    const isAsync = req.body.async === true || req.body.async === 'true';
 
     if (!phone) return res.status(400).json({ error: 'phone wajib diisi' });
 
@@ -533,40 +645,44 @@ app.post('/send-message', requireSecret, async (req, res) => {
     }
 
     try {
+        let payload = null;
+
         // ── Kirim File via URL ──
         if (url && filename) {
             const fileResp = await axiosInstance.get(url, { responseType: 'arraybuffer', timeout: 30000 });
             const buffer   = Buffer.from(fileResp.data);
             const mime     = mimetype || fileResp.headers['content-type'] || 'application/octet-stream';
-            await sock.sendMessage(jid, {
+            payload = {
                 document: buffer,
                 mimetype: mime,
                 fileName: filename,
                 caption: caption || message || ''
-            });
-            return res.json({ success: true, to: cleanPhone });
+            };
         }
-
         // ── Kirim File via Base64 ──
-        if (media && filename) {
+        else if (media && filename) {
             const buffer = Buffer.from(media, 'base64');
             const mime   = mimetype || 'application/octet-stream';
-            await sock.sendMessage(jid, {
+            payload = {
                 document: buffer,
                 mimetype: mime,
                 fileName: filename,
                 caption: caption || message || ''
-            });
-            return res.json({ success: true, to: cleanPhone });
+            };
         }
-
         // ── Kirim Teks ──
-        if (message) {
-            await sock.sendMessage(jid, { text: message });
-            return res.json({ success: true, to: cleanPhone });
+        else if (message) {
+            payload = { text: message };
         }
 
-        return res.status(400).json({ error: 'Butuh message, media+filename, atau url+filename' });
+        if (!payload) {
+            return res.status(400).json({ error: 'Butuh message, media+filename, atau url+filename' });
+        }
+
+        // Gunakan antrean (queue) pesan agar stabil dan aman dari limit/rate limit
+        const result = await queueMessage(sock, jid, payload, cleanPhone, isAsync);
+        return res.json(result);
+
     } catch (e) {
         console.error('[SEND] Error:', e.message);
         res.status(500).json({ error: e.message });

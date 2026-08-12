@@ -57,7 +57,7 @@
 
                         <div class="mb-3">
                             <label class="form-label">Metode Pembayaran Manual (Pisahkan dengan Koma)</label>
-                            <input type="text" name="manual_methods" class="form-control" value="{{ \App\Models\Setting::get('manual_payment_methods', 'Transfer Bank,Cash') }}">
+                            <input type="text" name="manual_methods" class="form-control" value="{{ \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay') }}">
                             <small class="text-muted">Contoh: Transfer Bank, Bayar Tunai, Titip Teknisi</small>
                         </div>
 
@@ -170,6 +170,13 @@
                 
                 <h6 class="mb-3">🚀 Eksekusi Manual (Force Sync)</h6>
                 <div class="d-flex flex-wrap gap-2">
+                    <form action="{{ route('settings.billing.isolir', ['type' => 'reminder']) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-warning btn-sm">
+                            <i class="bx bx-bell me-1"></i> Kirim Reminder WA (Tagihan Unpaid)
+                        </button>
+                    </form>
+                    
                     <form action="{{ route('settings.billing.isolir', ['type' => 'disable']) }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-outline-danger btn-sm">

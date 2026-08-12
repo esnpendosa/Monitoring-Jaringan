@@ -11,6 +11,7 @@ class DisableUnpaidServices extends Command
 
     public function handle(\App\Services\MikrotikService $mikrotikService)
     {
+        set_time_limit(0);
         $isForce = $this->option('force');
 
         if (!$isForce) {
@@ -70,7 +71,7 @@ class DisableUnpaidServices extends Command
                 $success = $mikrotikService->setSecretStatus($p->router, $username, $p->mikrotik_type, true, $p->ip_address);
 
                 if ($success) {
-                    $p->update(['is_active' => false]);
+                    $p->update(['is_active' => false, 'is_isolated' => true]);
                     $this->info("Berhasil dinonaktifkan.");
 
                     // Kirim notifikasi WA
@@ -82,7 +83,7 @@ class DisableUnpaidServices extends Command
                             $message .= "Internet Anda telah *dinonaktifkan* karena tagihan bulan *{$monthName} {$currentYear}* sebesar *Rp " . number_format($p->harga_layanan) . "* belum dibayar.\n\n";
                             $message .= "Silakan lakukan pembayaran dan internet Anda akan *otomatis aktif kembali* setelah konfirmasi.\n\n";
                             $message .= "Ketik *Cek Tagihan* untuk melihat detail tagihan Anda.";
-                            $waClient->sendMessage($p->no_wa, ['text' => $message]);
+                            $waClient->sendMessage($p->no_wa, ['text' => $message], true);
                         } catch (\Exception $e) {
                             \Illuminate\Support\Facades\Log::error('Gagal kirim notif isolir: ' . $e->getMessage());
                         }

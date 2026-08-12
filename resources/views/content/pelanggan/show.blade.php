@@ -176,6 +176,18 @@
                     
                     <p class="mb-1 text-muted small"><i class="bx bx-map me-1"></i> Alamat</p>
                     <p class="fw-bold">{{ $pelanggan->alamat }}</p>
+
+                    <p class="mb-1 text-muted small"><i class="bx bx-image-alt me-1"></i> Foto Rumah</p>
+                    @if($pelanggan->foto_rumah)
+                      <div class="mb-3 mt-1 text-center">
+                        <a href="{{ asset('storage/' . $pelanggan->foto_rumah) }}" target="_blank">
+                          <img src="{{ asset('storage/' . $pelanggan->foto_rumah) }}" alt="Foto Rumah" class="img-fluid rounded-3 shadow-sm border" style="max-height: 180px; object-fit: cover; width: 100%;" />
+                        </a>
+                        <small class="text-muted d-block mt-1">Klik gambar untuk ukuran penuh</small>
+                      </div>
+                    @else
+                      <p class="fw-bold text-muted small mb-3">Belum ada foto rumah</p>
+                    @endif
                 </div>
                 
                 <hr>

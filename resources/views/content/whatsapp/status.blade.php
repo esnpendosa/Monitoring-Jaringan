@@ -140,10 +140,10 @@
                                     </form>
                                     @endif
                                     <!-- Delete -->
-                                    <form action="{{ route('whatsapp.status.destroy', $s->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus jadwal status ini?')">
+                                    <form action="{{ route('whatsapp.status.destroy', $s->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-icon btn-sm btn-danger shadow-sm" title="Hapus">
+                                        <button type="button" class="btn btn-icon btn-sm btn-danger btn-delete-status shadow-sm" title="Hapus">
                                             <i class="bx bx-trash"></i>
                                         </button>
                                     </form>
@@ -174,6 +174,7 @@
 </div>
 
 @section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const uploadZone = document.getElementById('uploadZone');
@@ -242,6 +243,29 @@
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
+        });
+
+        // SweetAlert Confirmation for Delete Status Schedule
+        document.querySelectorAll('.btn-delete-status').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const form = this.closest('form');
+                
+                Swal.fire({
+                    title: 'Hapus Antrean Status?',
+                    text: "Apakah Anda yakin ingin menghapus antrean jadwal status WhatsApp ini?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff3e1d',
+                    cancelButtonColor: '#8592a3',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
         });
     });
 </script>

@@ -14,84 +14,68 @@ class PublishWaStatus extends Command
 
     public function handle()
     {
-        $this->info("Checking for scheduled WhatsApp Status updates...");
-        
-        $schedules = WaStatusSchedule::where('status', 'pending')
-            ->where('scheduled_at', '<=', now())
-            ->get();
-
-        if ($schedules->isEmpty()) {
-            $this->info("No pending schedules found.");
-            return 0;
-        }
-
-        $waClient = new WhatsappClient();
-
-        $jids = \App\Models\Pelanggan::whereNotNull('no_wa')
-            ->get()
-            ->map(function($p) {
-                $clean = preg_replace('/[^0-9]/', '', $p->no_wa);
-                if (empty($clean)) return null;
-                if (str_starts_with($clean, '0')) {
-                    $clean = '62' . substr($clean, 1);
-                }
-                if (!str_ends_with($clean, '@s.whatsapp.net')) {
-                    $clean .= '@s.whatsapp.net';
-                }
-                return $clean;
-            })
-            ->filter()
-            ->values()
-            ->toArray();
-
-        foreach ($schedules as $schedule) {
-            $this->info("Publishing Status ID: {$schedule->id} scheduled at {$schedule->scheduled_at}");
-            
-            try {
-                $mediaBase64 = null;
-                $mimetype = 'image/jpeg';
-
-                if ($schedule->media) {
-                    $filePath = storage_path('app/public/' . $schedule->media);
-                    if (file_exists($filePath)) {
-                        $fileData = file_get_contents($filePath);
-                        $mediaBase64 = base64_encode($fileData);
-                        
-                        // Guess mimetype based on extension to bypass php_fileinfo extension requirement
-                        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                        $mimes = [
-                            'jpg' => 'image/jpeg',
-                            'jpeg' => 'image/jpeg',
-                            'png' => 'image/png',
-                            'gif' => 'image/gif',
-                        ];
-                        $mimetype = $mimes[$extension] ?? 'image/jpeg';
-                    } else {
-                        throw new \Exception("Media file not found at: " . $filePath);
-                    }
-                }
-
-                $success = $waClient->sendStatus($schedule->content, $mediaBase64, $mimetype, $schedule->content, $jids);
-
-                if ($success) {
-                    $schedule->update([
-                        'status' => 'posted',
-                        'error_message' => null
-                    ]);
-                    $this->info("Successfully published Status ID: {$schedule->id}");
-                } else {
-                    throw new \Exception("Failed to send status update via WhatsappClient.");
-                }
-            } catch (\Exception $e) {
-                Log::error("Failed to publish WA Status ID {$schedule->id}: " . $e->getMessage());
-                $schedule->update([
-                    'status' => 'failed',
-                    'error_message' => $e->getMessage()
-                ]);
-                $this->error("Failed to publish Status ID: {$schedule->id}. Error: " . $e->getMessage());
-            }
-        }
-
-        return 0;
-    }
+         $this->info("Checking for scheduled WhatsApp Status updates...");
+         
+         $schedules = WaStatusSchedule::where('status', 'pending')
+             ->where('scheduled_at', '<=', now())
+             ->get();
+ 
+         if ($schedules->isEmpty()) {
+             $this->info("No pending schedules found.");
+             return 0;
+         }
+ 
+         $waClient = new WhatsappClient();
+ 
+         foreach ($schedules as $schedule) {
+             $this->info("Publishing Status ID: {$schedule->id} scheduled at {$schedule->scheduled_at}");
+             
+             try {
+                 $mediaBase64 = null;
+                 $mimetype = 'image/jpeg';
+ 
+                 if ($schedule->media) {
+                     $filePath = storage_path('app/public/' . $schedule->media);
+                     if (file_exists($filePath)) {
+                         $fileData = file_get_contents($filePath);
+                         $mediaBase64 = base64_encode($fileData);
+                         
+                         // Guess mimetype based on extension to bypass php_fileinfo extension requirement
+                         $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                         $mimes = [
+                             'jpg' => 'image/jpeg',
+                             'jpeg' => 'image/jpeg',
+                             'png' => 'image/png',
+                             'gif' => 'image/gif',
+                         ];
+                         $mimetype = $mimes[$extension] ?? 'image/jpeg';
+                     } else {
+                         throw new \Exception("Media file not found at: " . $filePath);
+                     }
+                 }
+ 
+                 // Passing empty array [] tells the bot to broadcast the status to ALL contacts in the phone's memory
+                 $success = $waClient->sendStatus($schedule->content, $mediaBase64, $mimetype, $schedule->content, []);
+ 
+                 if ($success) {
+                     $schedule->update([
+                         'status' => 'posted',
+                         'error_message' => null
+                     ]);
+                     $this->info("Successfully published Status ID: {$schedule->id}");
+                 } else {
+                     throw new \Exception("Failed to send status update via WhatsappClient.");
+                 }
+             } catch (\Exception $e) {
+                 Log::error("Failed to publish WA Status ID {$schedule->id}: " . $e->getMessage());
+                 $schedule->update([
+                     'status' => 'failed',
+                     'error_message' => $e->getMessage()
+                 ]);
+                 $this->error("Failed to publish Status ID: {$schedule->id}. Error: " . $e->getMessage());
+             }
+         }
+ 
+         return 0;
+     }
 }

@@ -41,6 +41,7 @@
             <th>Nama Pelanggan</th>
             <th>No. WhatsApp</th>
             <th>Alamat</th>
+            <th>Foto Rumah</th>
             <th>Paket Pilihan</th>
             <th>Koordinat & Maps</th>
             <th>Status Aktif</th>
@@ -71,6 +72,15 @@
               <span title="{{ $p->alamat }}">{{ Str::limit($p->alamat, 25) }}</span>
             </td>
             <td>
+              @if($p->foto_rumah)
+                <a href="{{ asset('storage/' . $p->foto_rumah) }}" target="_blank" class="btn btn-xs btn-outline-info">
+                  <i class="bx bx-image-alt me-1"></i> Lihat Foto
+                </a>
+              @else
+                <span class="text-muted small">Tidak ada foto</span>
+              @endif
+            </td>
+            <td>
               <span class="badge bg-label-info">{{ $p->paket ?? 'umum' }}</span>
               <div class="small text-muted">Rp {{ number_format($p->harga_layanan, 0, ',', '.') }}</div>
             </td>
@@ -98,16 +108,35 @@
               @endif
             </td>
             <td>
-              <div class="dropdown">
-                <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown"><i class="bx bx-dots-vertical-rounded"></i></button>
-                <div class="dropdown-menu">
-                  <a class="dropdown-item" href="{{ route('pelanggan.show', $p->id_pelanggan) }}"><i class="bx bx-show-alt me-1"></i> Detail / Statistik</a>
-                  <a class="dropdown-item" href="{{ route('pelanggan.edit', $p->id_pelanggan) }}"><i class="bx bx-edit-alt me-1"></i> Edit & Tentukan Router</a>
-                  <form action="{{ route('pelanggan.destroy', $p->id_pelanggan) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus pendaftaran ini?')">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="dropdown-item text-danger"><i class="bx bx-trash me-1"></i> Hapus</button>
-                  </form>
+              <div class="d-inline-flex gap-1 align-items-center">
+                <a href="{{ route('pelanggan.show', $p->id_pelanggan) }}" class="btn btn-xs btn-outline-info" title="Detail / Statistik">
+                  <i class="bx bx-show-alt"></i>
+                </a>
+                <a href="{{ route('pelanggan.edit', $p->id_pelanggan) }}" class="btn btn-xs btn-outline-warning" title="Edit & Tentukan Router">
+                  <i class="bx bx-edit-alt"></i>
+                </a>
+                <!-- Trigger Button for Bootstrap Modal -->
+                <button type="button" class="btn btn-xs btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $p->id_pelanggan }}" title="Hapus">
+                  <i class="bx bx-trash"></i>
+                </button>
+
+                <!-- Premium Center-aligned Delete Modal -->
+                <div class="modal fade" id="deleteModal{{ $p->id_pelanggan }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Konfirmasi</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body" style="white-space: normal;">
+                        Apakah Anda yakin ingin menghapus pendaftaran dari <strong>{{ $p->nama_pelanggan }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <a href="{{ route('pelanggan.destroy-direct', $p->id_pelanggan) }}" class="btn btn-danger">Hapus</a>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </td>

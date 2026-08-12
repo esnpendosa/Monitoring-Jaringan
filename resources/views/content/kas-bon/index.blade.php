@@ -137,7 +137,7 @@
               <span class="badge bg-label-secondary">Dibatalkan</span>
               @endif
             </td>
-            <td>
+             <td>
               <div class="d-flex align-items-center gap-1">
                 @if($kb->status === 'belum_lunas')
                 <form action="{{ route('kas-bon.pay', $kb->id_kas_bon) }}" method="POST" class="d-inline">
@@ -152,13 +152,30 @@
                         data-bs-toggle="modal" data-bs-target="#editKasBonModal{{ $kb->id_kas_bon }}">
                   <i class="bx bx-edit-alt"></i>
                 </button>
-                <form action="{{ route('kas-bon.destroy', $kb->id_kas_bon) }}" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus catatan kas bon ini?')">
-                  @csrf
-                  @method('DELETE')
-                  <button type="submit" class="btn btn-icon btn-sm btn-danger" title="Hapus">
-                    <i class="bx bx-trash"></i>
-                  </button>
-                </form>
+                
+                <!-- Trigger Button for Bootstrap Modal -->
+                <button type="button" class="btn btn-icon btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $kb->id_kas_bon }}" title="Hapus">
+                  <i class="bx bx-trash"></i>
+                </button>
+
+                <!-- Premium Center-aligned Delete Modal -->
+                <div class="modal fade" id="deleteModal{{ $kb->id_kas_bon }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title">Konfirmasi</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body" style="white-space: normal;">
+                        Apakah Anda yakin ingin menghapus catatan kas bon dari <strong>{{ $kb->worker_name }}</strong> sebesar <strong>Rp {{ number_format($kb->jumlah, 0, ',', '.') }}</strong>?
+                      </div>
+                      <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <a href="{{ route('kas-bon.destroy', $kb->id_kas_bon) }}" class="btn btn-danger">Hapus</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </td>
           </tr>
@@ -177,12 +194,18 @@
                   <div class="modal-body">
                     <div class="mb-3">
                       <label class="form-label">Pilih Pekerja (Dari Database)</label>
-                      <select name="id_teknisi" class="form-select edit-worker-select">
+                      <select name="selected_pekerja" class="form-select edit-worker-select">
                         <option value="">-- Pekerja Eksternal / Manual --</option>
-                        @foreach($teknisis as $t)
-                        <option value="{{ $t->id_teknisi }}" {{ $kb->id_teknisi == $t->id_teknisi ? 'selected' : '' }}>
-                          {{ $t->nama_teknisi }}
-                        </option>
+                        @foreach($teknisiUsers as $tu)
+                          @if($tu->teknisi)
+                            <option value="teknisi:{{ $tu->teknisi->id_teknisi }}" {{ $kb->id_teknisi == $tu->teknisi->id_teknisi ? 'selected' : '' }}>
+                              {{ $tu->name }}
+                            </option>
+                          @else
+                            <option value="user:{{ $tu->name }}" {{ ($kb->id_teknisi === null && $kb->nama_pekerja === $tu->name) ? 'selected' : '' }}>
+                              {{ $tu->name }}
+                            </option>
+                          @endif
                         @endforeach
                       </select>
                     </div>
@@ -247,10 +270,14 @@
         <div class="modal-body">
           <div class="mb-3">
             <label class="form-label">Pilih Pekerja (Dari Database)</label>
-            <select name="id_teknisi" id="add_id_teknisi" class="form-select">
+            <select name="selected_pekerja" id="add_selected_pekerja" class="form-select">
               <option value="">-- Pekerja Eksternal / Manual --</option>
-              @foreach($teknisis as $t)
-              <option value="{{ $t->id_teknisi }}">{{ $t->nama_teknisi }}</option>
+              @foreach($teknisiUsers as $tu)
+                @if($tu->teknisi)
+                  <option value="teknisi:{{ $tu->teknisi->id_teknisi }}">{{ $tu->name }}</option>
+                @else
+                  <option value="user:{{ $tu->name }}">{{ $tu->name }}</option>
+                @endif
               @endforeach
             </select>
           </div>
@@ -291,11 +318,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Show/hide manual worker name field dynamically based on select in ADD modal
-    const addTeknisiSelect = document.getElementById('add_id_teknisi');
+    const addPekerjaSelect = document.getElementById('add_selected_pekerja');
     const addManualDiv = document.getElementById('add_manual_name_div');
 
-    if (addTeknisiSelect && addManualDiv) {
-        addTeknisiSelect.addEventListener('change', function() {
+    if (addPekerjaSelect && addManualDiv) {
+        addPekerjaSelect.addEventListener('change', function() {
             if (this.value !== '') {
                 addManualDiv.style.display = 'none';
             } else {

@@ -69,6 +69,9 @@ class BotResponseController extends Controller
     {
         if (auth()->user()->id_role != 1) abort(403);
         
+        // Gracefully set parent_id of any submenus to null to prevent FK constraint error
+        BotResponse::where('parent_id', $bot->id)->update(['parent_id' => null]);
+        
         $bot->delete();
         return back()->with('success', 'Respon Bot berhasil dihapus!');
     }

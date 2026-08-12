@@ -30,7 +30,11 @@ class KasBonController extends Controller
         }
 
         $kasBons = $query->latest('tanggal')->paginate(15);
-        $teknisis = Teknisi::where('is_active', true)->get();
+        
+        // Fetch all Users with role 'Teknisi' along with their Teknisi profile if it exists
+        $teknisiUsers = \App\Models\User::whereHas('role', function($q) {
+            $q->where('name', 'Teknisi');
+        })->with('teknisi')->get();
 
         // Statistics
         $totalBelumLunas = KasBon::where('status', 'belum_lunas')->sum('jumlah');
@@ -48,7 +52,7 @@ class KasBonController extends Controller
 
         return view('content.kas-bon.index', compact(
             'kasBons',
-            'teknisis',
+            'teknisiUsers',
             'totalBelumLunas',
             'totalLunas',
             'groupedUnpaid'
@@ -57,6 +61,21 @@ class KasBonController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->filled('selected_pekerja')) {
+            $parts = explode(':', $request->input('selected_pekerja'), 2);
+            if ($parts[0] === 'teknisi') {
+                $request->merge([
+                    'id_teknisi' => $parts[1],
+                    'nama_pekerja' => null
+                ]);
+            } else {
+                $request->merge([
+                    'id_teknisi' => null,
+                    'nama_pekerja' => $parts[1]
+                ]);
+            }
+        }
+
         $validated = $request->validate([
             'id_teknisi' => 'nullable|exists:teknisi,id_teknisi',
             'nama_pekerja' => 'nullable|string|max:255',
@@ -80,6 +99,21 @@ class KasBonController extends Controller
     public function update(Request $request, $id)
     {
         $kasBon = KasBon::findOrFail($id);
+
+        if ($request->filled('selected_pekerja')) {
+            $parts = explode(':', $request->input('selected_pekerja'), 2);
+            if ($parts[0] === 'teknisi') {
+                $request->merge([
+                    'id_teknisi' => $parts[1],
+                    'nama_pekerja' => null
+                ]);
+            } else {
+                $request->merge([
+                    'id_teknisi' => null,
+                    'nama_pekerja' => $parts[1]
+                ]);
+            }
+        }
 
         $validated = $request->validate([
             'id_teknisi' => 'nullable|exists:teknisi,id_teknisi',

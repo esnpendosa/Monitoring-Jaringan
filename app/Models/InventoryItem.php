@@ -14,7 +14,11 @@ class InventoryItem extends Model
 
     protected $fillable = [
         'nama_alat', 'gambar_alat', 'kategori', 'merk', 'serial_number', 'stok',
-        'kondisi', 'status', 'id_teknisi', 'id_user', 'catatan'
+        'kondisi', 'status', 'id_teknisi', 'id_user', 'catatan', 'harga_beli', 'tanggal_beli'
+    ];
+
+    protected $casts = [
+        'tanggal_beli' => 'date',
     ];
 
     public function technician()

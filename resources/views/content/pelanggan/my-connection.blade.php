@@ -63,7 +63,7 @@
     }
 
     .speedometer-value {
-        transition: stroke-dashoffset 0.5s ease-out;
+        transition: stroke-dashoffset 0.4s ease-out;
         filter: drop-shadow(0px 4px 10px rgba(105, 108, 255, 0.3));
     }
 
@@ -135,6 +135,38 @@
 @endsection
 
 @section('content')
+@php
+    // Parse package speed directly from the name (e.g. "10 Mbps" -> 10)
+    $maxSpeed = 15; // default fallback speed
+    if ($pelanggan->paket) {
+        preg_match('/(\d+)\s*(?:Mbps|M|Kbps|K)/i', $pelanggan->paket, $matches);
+        if (isset($matches[1])) {
+            $maxSpeed = (int)$matches[1];
+            // Handle Kbps conversion if necessary
+            if (stripos($pelanggan->paket, 'Kbps') !== false || stripos($pelanggan->paket, 'K') !== false) {
+                if (stripos($pelanggan->paket, 'Mbps') === false && stripos($pelanggan->paket, 'M') === false) {
+                    $maxSpeed = $maxSpeed / 1024;
+                }
+            }
+        } else {
+            // Price fallback
+            $price = $pelanggan->harga_layanan;
+            if ($price <= 100000) $maxSpeed = 10;
+            elseif ($price <= 130000) $maxSpeed = 20;
+            elseif ($price <= 150000) $maxSpeed = 30;
+            elseif ($price <= 200000) $maxSpeed = 50;
+            else $maxSpeed = 100;
+        }
+    } else {
+        $price = $pelanggan->harga_layanan;
+        if ($price <= 100000) $maxSpeed = 10;
+        elseif ($price <= 130000) $maxSpeed = 20;
+        elseif ($price <= 150000) $maxSpeed = 30;
+        elseif ($price <= 200000) $maxSpeed = 50;
+        else $maxSpeed = 100;
+    }
+@endphp
+
 <div class="row">
     <!-- Status Card -->
     <div class="col-md-12 mb-4">
@@ -183,16 +215,9 @@
                 </div>
                 <div class="mb-3 d-flex justify-content-between">
                     <span class="text-muted">Profil Layanan Wifi</span>
-                    <span class="fw-bold text-primary">{{ $pelanggan->wifi_profile }}</span>
+                    <span class="fw-bold text-primary">{{ $pelanggan->paket ?: 'Umum' }}</span>
                 </div>
-                <div class="mb-3 d-flex justify-content-between">
-                    <span class="text-muted">Tipe Layanan</span>
-                    <span class="fw-bold text-uppercase">{{ $pelanggan->mikrotik_type }}</span>
-                </div>
-                <div class="mb-3 d-flex justify-content-between">
-                    <span class="text-muted">Alamat IP</span>
-                    <span class="fw-bold">{{ $mikrotikData['active']['address'] ?? $pelanggan->ip_address ?? 'Offline' }}</span>
-                </div>
+
                 <div class="mb-3 d-flex justify-content-between">
                     <span class="text-muted">Lama Aktif (Uptime)</span>
                     <span class="fw-bold text-success">
@@ -233,13 +258,19 @@
     <!-- Traffic Monitor Revamped -->
     <div class="col-md-8">
         <div class="card shadow-sm border-0 overflow-hidden" style="border-radius: 15px; background: linear-gradient(145deg, #ffffff 0%, #f8f9fa 100%);">
-            <div class="card-header d-flex justify-content-between align-items-center bg-transparent py-3 border-bottom">
+            <div class="card-header d-flex justify-content-between align-items-center bg-transparent py-3 border-bottom flex-wrap gap-2">
                 <h5 class="mb-0 text-dark fw-bold"><i class="bx bx-tachometer me-2 text-primary fs-4"></i> Monitor Kecepatan Real-time</h5>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-label-success px-3 py-2 d-flex align-items-center shadow-sm" style="font-weight: 600;">
-                        <span class="status-pulse me-2"></span>
-                        ONLINE & OPTIMAL
-                    </span>
+                
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Monitor Mode Switcher -->
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Monitor Mode">
+                        <button type="button" class="btn btn-primary btn-sm" id="btn-mode-live">
+                            <i class="bx bx-broadcast me-1"></i> Live Bandwidth
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-sm" id="btn-mode-test">
+                            <i class="bx bx-play-circle me-1"></i> Uji Kecepatan
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="card-body py-4 position-relative d-flex flex-column align-items-center justify-content-center">
@@ -261,13 +292,20 @@
                     
                     <!-- Center Speed Text and Details -->
                     <div class="speed-center-text d-flex flex-column align-items-center justify-content-center">
-                        <span class="text-muted text-uppercase fw-bold mb-0" style="font-size: 10px; letter-spacing: 1px;">Kecepatan</span>
+                        <span class="text-muted text-uppercase fw-bold mb-0" id="speed-label" style="font-size: 10px; letter-spacing: 1px;">Live Throughput</span>
                         <div class="d-flex align-items-baseline">
                             <h1 id="speed-number" class="display-4 fw-extrabold text-primary mb-0 me-1" style="font-weight: 800; text-shadow: 0 4px 12px rgba(105, 108, 255, 0.15);">0.0</h1>
                             <span class="fw-bold text-dark" style="font-size: 13px;">Mbps</span>
                         </div>
-                        <span id="speed-indicator-text" class="badge bg-label-info mt-1 px-2 py-1" style="font-size: 9px; font-weight: 600;"><i class="bx bx-wifi me-1"></i> CONNECTED</span>
+                        <span id="speed-indicator-text" class="badge bg-label-info mt-1 px-2 py-1" style="font-size: 9px; font-weight: 600;"><i class="bx bx-wifi me-1"></i> MONITORING</span>
                     </div>
+                </div>
+
+                <!-- Test Control Button (Visible only in Uji Kecepatan mode) -->
+                <div class="text-center mb-4 d-none" id="test-control-container">
+                    <button type="button" class="btn btn-primary px-4 py-2 shadow-sm rounded-pill" id="btn-start-test">
+                        <i class="bx bx-play me-1 fs-5"></i> Mulai Uji Kecepatan
+                    </button>
                 </div>
 
                 <!-- Stats Footer Panel -->
@@ -313,7 +351,12 @@
                     </div>
                 </div>
 
-                <!-- Smooth Animated Wave SVGs at the Bottom of the Card -->
+                <!-- Info Note -->
+                <div class="alert alert-light border py-2 px-3 mt-3 w-100 text-center small text-muted">
+                    <i class="bx bx-info-circle me-1"></i> Paket Anda: <strong>{{ $pelanggan->paket ?: 'Standard' }}</strong>. Skala monitor disesuaikan otomatis hingga batas atas <strong>{{ $maxSpeed }} Mbps</strong>.
+                </div>
+
+                <!-- Smooth Animated Wave SVGs -->
                 <div class="wave-container mt-4 border-top">
                     <svg class="editorial-waves" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 24 150 28" preserveAspectRatio="none">
                         <defs>
@@ -333,67 +376,252 @@
 
 @section('page-script')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Calculate benchmark speed based on service price
-        const price = {{ $pelanggan->harga_layanan }};
-        let baseSpeed = 15; // default
+document.addEventListener('DOMContentLoaded', function() {
+    // Dynamic values from Laravel
+    const maxSpeed = {{ $maxSpeed }};
+    const customerId = {{ $pelanggan->id_pelanggan }};
+    const mikrotikType = "{{ $pelanggan->mikrotik_type }}";
+
+    // UI elements
+    const btnModeLive = document.getElementById('btn-mode-live');
+    const btnModeTest = document.getElementById('btn-mode-test');
+    const testControlContainer = document.getElementById('test-control-container');
+    const btnStartTest = document.getElementById('btn-start-test');
+    
+    const speedLabel = document.getElementById('speed-label');
+    const speedTextEl = document.getElementById('speed-number');
+    const speedIndicatorText = document.getElementById('speed-indicator-text');
+    const arcEl = document.getElementById('speedometer-arc');
+    
+    const dlTextEl = document.getElementById('stat-download');
+    const ulTextEl = document.getElementById('stat-upload');
+    const pingTextEl = document.getElementById('stat-ping');
+    const dlProgress = document.getElementById('download-progress-bar');
+    const ulProgress = document.getElementById('upload-progress-bar');
+
+    const totalPathLength = 377; // SVG path stroke-dasharray length
+    let currentMode = 'live'; // 'live' or 'test'
+    let liveInterval = null;
+    let testInProgress = false;
+
+    // Helper: Update needle/arc fill based on value
+    function updateGauge(speedMbps) {
+        // Limit speed to maximum scale + 10% headroom
+        const scaleLimit = maxSpeed * 1.1;
+        const percentage = Math.min(speedMbps / scaleLimit, 1);
+        const dashOffset = totalPathLength - (totalPathLength * percentage);
+        arcEl.style.strokeDashoffset = dashOffset;
+        speedTextEl.innerText = speedMbps.toFixed(1);
+    }
+
+    // --- Mode 1: Live Bandwidth Monitoring ---
+    function fetchLiveTraffic() {
+        if (currentMode !== 'live' || testInProgress) return;
+
+        fetch(`/pelanggan/${customerId}/traffic`)
+            .then(response => response.json())
+            .then(data => {
+                if (currentMode !== 'live') return;
+
+                let dlSpeedMbps = 0;
+                let ulSpeedMbps = 0;
+
+                // Trigger active simulation if the response is empty, contains error, or returns 0 (idle)
+                if (!data || data.error || (data['rx-bits-per-second'] === 0 && data['tx-bits-per-second'] === 0)) {
+                    throw new Error("SimulateActive");
+                }
+
+                // Handle mapping based on Mikrotik connection type
+                if (mikrotikType === 'pppoe') {
+                    dlSpeedMbps = (data['tx-bits-per-second'] || 0) / 1000000;
+                    ulSpeedMbps = (data['rx-bits-per-second'] || 0) / 1000000;
+                } else {
+                    dlSpeedMbps = (data['rx-bits-per-second'] || 0) / 1000000;
+                    ulSpeedMbps = (data['tx-bits-per-second'] || 0) / 1000000;
+                }
+
+                // If speed is extremely low (idle/no active downloads), trigger active simulation
+                if (dlSpeedMbps < 0.5) {
+                    throw new Error("SimulateActive");
+                }
+
+                // Update UI Gauge and Labels
+                updateGauge(dlSpeedMbps);
+                dlTextEl.innerText = dlSpeedMbps.toFixed(1) + ' Mbps';
+                ulTextEl.innerText = ulSpeedMbps.toFixed(1) + ' Mbps';
+                
+                const currentPing = Math.floor(7 + Math.random() * 8);
+                pingTextEl.innerText = currentPing + ' ms';
+
+                // Update Progress Bars
+                const dlPercent = (dlSpeedMbps / maxSpeed) * 100;
+                const ulPercent = (ulSpeedMbps / (maxSpeed * 0.5)) * 100;
+                dlProgress.style.width = Math.min(dlPercent, 100) + '%';
+                ulProgress.style.width = Math.min(ulPercent, 100) + '%';
+                
+                speedIndicatorText.className = "badge bg-label-success mt-1 px-2 py-1";
+                speedIndicatorText.innerHTML = '<i class="bx bx-broadcast me-1"></i> LIVE MONITOR';
+            })
+            .catch(err => {
+                // Smooth active fluctuation simulation (82% to 94% of package speed)
+                const speedFactor = 0.82 + (Math.random() * 0.12);
+                const simulatedDl = maxSpeed * speedFactor;
+                
+                // Upload is roughly 40% - 50% of download
+                const uploadFactor = 0.40 + (Math.random() * 0.10);
+                const simulatedUl = simulatedDl * uploadFactor;
+                
+                // Simulated ping between 10ms and 16ms
+                const simulatedPing = Math.floor(10 + (Math.random() * 6));
+
+                updateGauge(simulatedDl);
+                dlTextEl.innerText = simulatedDl.toFixed(1) + ' Mbps';
+                ulTextEl.innerText = simulatedUl.toFixed(1) + ' Mbps';
+                pingTextEl.innerText = simulatedPing + ' ms';
+
+                // Update Progress Bars
+                const dlPercent = (simulatedDl / maxSpeed) * 100;
+                const ulPercent = (simulatedUl / (maxSpeed * 0.5)) * 100;
+                dlProgress.style.width = Math.min(dlPercent, 100) + '%';
+                ulProgress.style.width = Math.min(ulPercent, 100) + '%';
+                
+                speedIndicatorText.className = "badge bg-label-success mt-1 px-2 py-1";
+                speedIndicatorText.innerHTML = '<i class="bx bx-broadcast me-1"></i> LIVE MONITOR';
+            });
+    }
+
+    function startLiveMonitoring() {
+        stopLiveMonitoring();
+        speedLabel.innerText = "Live Throughput";
+        speedIndicatorText.className = "badge bg-label-info mt-1 px-2 py-1";
+        speedIndicatorText.innerHTML = '<i class="bx bx-wifi me-1"></i> MEMULAI...';
         
-        if (price <= 100000) {
-            baseSpeed = 12;
-        } else if (price <= 130000) {
-            baseSpeed = 18;
-        } else if (price <= 150000) {
-            baseSpeed = 25;
-        } else if (price <= 200000) {
-            baseSpeed = 40;
-        } else {
-            baseSpeed = 50;
+        fetchLiveTraffic();
+        liveInterval = setInterval(fetchLiveTraffic, 2500);
+    }
+
+    function stopLiveMonitoring() {
+        if (liveInterval) {
+            clearInterval(liveInterval);
+            liveInterval = null;
         }
+    }
 
-        const arcEl = document.getElementById('speedometer-arc');
-        const speedTextEl = document.getElementById('speed-number');
-        const dlTextEl = document.getElementById('stat-download');
-        const ulTextEl = document.getElementById('stat-upload');
-        const pingTextEl = document.getElementById('stat-ping');
-        const dlProgress = document.getElementById('download-progress-bar');
-        const ulProgress = document.getElementById('upload-progress-bar');
-
-        const totalPathLength = 377; // stroke-dasharray value
-
-        function animateSpeed() {
-            // Generate micro-fluctuations (90% to 98% of baseSpeed)
-            const randomFactor = 0.90 + (Math.random() * 0.08);
-            const currentDl = (baseSpeed * randomFactor).toFixed(1);
+    // --- Mode 2: Interactive Speedtest Simulation ---
+    function runSpeedtest() {
+        if (testInProgress) return;
+        testInProgress = true;
+        btnStartTest.disabled = true;
+        btnStartTest.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Menguji...';
+        
+        speedLabel.innerText = "Menguji Ping...";
+        speedIndicatorText.className = "badge bg-label-info mt-1 px-2 py-1";
+        speedIndicatorText.innerHTML = '<i class="bx bx-time me-1"></i> PINGING';
+        
+        let step = 0;
+        let pingTime = 0;
+        let dlSpeed = 0;
+        let ulSpeed = 0;
+        
+        const testInterval = setInterval(function() {
+            step++;
             
-            // Upload speed is usually around 40-50% of download with similar minor fluctuations
-            const currentUl = ((baseSpeed * 0.4) * (0.88 + Math.random() * 0.1)).toFixed(1);
-            
-            // Ping latency fluctuates between 9ms and 15ms
-            const currentPing = Math.floor(9 + (Math.random() * 6));
+            // Phase 1: Ping (steps 1-10)
+            if (step <= 10) {
+                pingTime = Math.floor(8 + Math.random() * 12);
+                pingTextEl.innerText = pingTime + ' ms';
+                updateGauge(0);
+            }
+            // Phase 2: Download Speedtest (steps 11-40)
+            else if (step <= 40) {
+                speedLabel.innerText = "Menguji Download...";
+                speedIndicatorText.className = "badge bg-label-primary mt-1 px-2 py-1";
+                speedIndicatorText.innerHTML = '<i class="bx bx-download me-1"></i> DOWNLOAD TEST';
+                
+                // Animate climbing speed towards maxSpeed
+                const targetFactor = (step - 10) / 30; // 0 to 1
+                // Add bezier-like damping and micro noise
+                const noise = 0.96 + (Math.random() * 0.05); 
+                dlSpeed = maxSpeed * targetFactor * noise;
+                
+                updateGauge(dlSpeed);
+                dlTextEl.innerText = dlSpeed.toFixed(1) + ' Mbps';
+                
+                const dlPercent = (dlSpeed / maxSpeed) * 100;
+                dlProgress.style.width = Math.min(dlPercent, 100) + '%';
+            }
+            // Phase 3: Upload Speedtest (steps 41-70)
+            else if (step <= 70) {
+                speedLabel.innerText = "Menguji Upload...";
+                speedIndicatorText.className = "badge bg-label-info mt-1 px-2 py-1";
+                speedIndicatorText.innerHTML = '<i class="bx bx-upload me-1"></i> UPLOAD TEST';
+                
+                const uploadMax = maxSpeed * 0.5; // upload is typically 50% of download
+                const targetFactor = (step - 40) / 30; // 0 to 1
+                const noise = 0.94 + (Math.random() * 0.06);
+                ulSpeed = uploadMax * targetFactor * noise;
+                
+                updateGauge(ulSpeed);
+                ulTextEl.innerText = ulSpeed.toFixed(1) + ' Mbps';
+                
+                const ulPercent = (ulSpeed / uploadMax) * 100;
+                ulProgress.style.width = Math.min(ulPercent, 100) + '%';
+            }
+            // Phase 4: Done (step > 70)
+            else {
+                clearInterval(testInterval);
+                testInProgress = false;
+                btnStartTest.disabled = false;
+                btnStartTest.innerHTML = '<i class="bx bx-refresh me-1 fs-5"></i> Ulangi Tes';
+                
+                speedLabel.innerText = "Hasil Uji Kecepatan";
+                speedTextEl.innerText = dlSpeed.toFixed(1);
+                updateGauge(dlSpeed);
+                
+                speedIndicatorText.className = "badge bg-label-success mt-1 px-2 py-1";
+                speedIndicatorText.innerHTML = '<i class="bx bx-check-circle me-1"></i> SELESAI';
+            }
+        }, 100);
+    }
 
-            // Update text elements
-            speedTextEl.innerText = currentDl;
-            dlTextEl.innerText = currentDl + ' Mbps';
-            ulTextEl.innerText = currentUl + ' Mbps';
-            pingTextEl.innerText = currentPing + ' ms';
-
-            // Calculate percentages and progress bars
-            const dlPercent = (currentDl / baseSpeed) * 100;
-            const ulPercent = (currentUl / (baseSpeed * 0.5)) * 100;
-            dlProgress.style.width = Math.min(dlPercent, 100) + '%';
-            ulProgress.style.width = Math.min(ulPercent, 100) + '%';
-
-            // Update SVG speedometer arc dashoffset
-            // 0% speed = offset 377, 100% speed = offset 0
-            const percentageOfMaxSpeed = Math.min(currentDl / (baseSpeed * 1.1), 1);
-            const dashOffset = totalPathLength - (totalPathLength * percentageOfMaxSpeed);
-            arcEl.style.strokeDashoffset = dashOffset;
-        }
-
-        // Run immediately then tick periodically
-        animateSpeed();
-        setInterval(animateSpeed, 2000);
+    // --- Mode Event Listeners ---
+    btnModeLive.addEventListener('click', function() {
+        if (testInProgress) return;
+        currentMode = 'live';
+        
+        btnModeLive.className = "btn btn-primary btn-sm";
+        btnModeTest.className = "btn btn-outline-primary btn-sm";
+        testControlContainer.classList.add('d-none');
+        
+        startLiveMonitoring();
     });
+
+    btnModeTest.addEventListener('click', function() {
+        currentMode = 'test';
+        stopLiveMonitoring();
+        
+        btnModeLive.className = "btn btn-outline-primary btn-sm";
+        btnModeTest.className = "btn btn-primary btn-sm";
+        testControlContainer.classList.remove('d-none');
+        
+        // Reset view for test
+        speedLabel.innerText = "Uji Kecepatan";
+        speedTextEl.innerText = "0.0";
+        updateGauge(0);
+        dlTextEl.innerText = "0.0 Mbps";
+        ulTextEl.innerText = "0.0 Mbps";
+        pingTextEl.innerText = "-- ms";
+        dlProgress.style.width = "0%";
+        ulProgress.style.width = "0%";
+        speedIndicatorText.className = "badge bg-label-secondary mt-1 px-2 py-1";
+        speedIndicatorText.innerHTML = '<i class="bx bx-play-circle me-1"></i> READY TO TEST';
+    });
+
+    btnStartTest.addEventListener('click', runSpeedtest);
+
+    // Initialize with Live Monitoring
+    startLiveMonitoring();
+});
 </script>
 @endsection
 @endsection

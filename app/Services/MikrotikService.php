@@ -41,7 +41,7 @@ class MikrotikService
                     'user'    => $router->username,
                     'pass'    => decrypt($router->password_encrypted),
                     'port'    => (int) ($router->api_port ?? 8728),
-                    'timeout' => 10, // Menggunakan 10 detik agar pembacaan kueri stabil & andal
+                    'timeout' => 20, // Menggunakan 20 detik agar pembacaan kueri stabil & andal dan mencegah Stream timed out
                     'attempts' => 1,
                     'delay'    => 1,
                 ]);
@@ -140,23 +140,31 @@ class MikrotikService
         try {
             $searchKey = trim($username);
 
+            // Helper to safely extract first item from RouterOS response
+            // RouterOS API sometimes returns ['after' => [...]] for empty results
+            // or non-indexed arrays, causing "Undefined array key 0" errors
+            $safeFirst = function($result) {
+                if (!is_array($result) || empty($result) || isset($result['after'])) {
+                    return null;
+                }
+                return isset($result[0]) && is_array($result[0]) ? $result[0] : null;
+            };
+
             // 1. Coba cari langsung berdasarkan Name (Paling Cepat & Akurat!)
             $query = new Query('/queue/simple/print');
             $query->equal('.proplist', '.id,name,target,comment,max-limit');
             $query->where('name', $searchKey);
             $queues = $client->query($query)->read();
-            if (!empty($queues) && !isset($queues['after'])) {
-                if (isset($queues[0])) return $queues[0];
-            }
+            $found = $safeFirst($queues);
+            if ($found) return $found;
 
             // 2. Coba cari langsung berdasarkan Comment
             $query = new Query('/queue/simple/print');
             $query->equal('.proplist', '.id,name,target,comment,max-limit');
             $query->where('comment', $searchKey);
             $queues = $client->query($query)->read();
-            if (!empty($queues) && !isset($queues['after'])) {
-                if (isset($queues[0])) return $queues[0];
-            }
+            $found = $safeFirst($queues);
+            if ($found) return $found;
 
             // 3. Coba cari langsung berdasarkan Target IP
             if ($ipAddress) {
@@ -167,41 +175,18 @@ class MikrotikService
                 $query->equal('.proplist', '.id,name,target,comment,max-limit');
                 $query->where('target', $cleanIp . '/32');
                 $queues = $client->query($query)->read();
-                if (!empty($queues) && !isset($queues['after'])) {
-                    if (isset($queues[0])) return $queues[0];
-                }
+                $found = $safeFirst($queues);
+                if ($found) return $found;
 
                 // Format IP biasa
                 $query = new Query('/queue/simple/print');
                 $query->equal('.proplist', '.id,name,target,comment,max-limit');
                 $query->where('target', $cleanIp);
                 $queues = $client->query($query)->read();
-                if (!empty($queues) && !isset($queues['after'])) {
-                    if (isset($queues[0])) return $queues[0];
-                }
+                $found = $safeFirst($queues);
+                if ($found) return $found;
             }
 
-            // 4. Fallback Terakhir: Lakukan scan parsial jika kueri langsung tidak cocok
-            $query = new Query('/queue/simple/print');
-            $query->equal('.proplist', '.id,name,target,comment,max-limit');
-            $allQueues = $client->query($query)->read();
-
-            if (!empty($allQueues)) {
-                $searchLower = strtolower($searchKey);
-                $customerIp = $ipAddress ? trim($ipAddress) : null;
-
-                foreach ($allQueues as $q) {
-                    $qName = strtolower($q['name'] ?? '');
-                    $qComment = strtolower($q['comment'] ?? '');
-                    $qTarget = $q['target'] ?? '';
-                    
-                    if (str_contains($qName, $searchLower) || 
-                        str_contains($qComment, $searchLower) ||
-                        ($customerIp && str_contains($qTarget, $customerIp))) {
-                        return $q;
-                    }
-                }
-            }
         } catch (\Exception $e) {
             \Log::error("Mikrotik findSimpleQueue Error: " . $e->getMessage());
             if ($router) {
@@ -252,7 +237,7 @@ class MikrotikService
             if ($type === 'pppoe') {
                 $path = '/ppp/active';
                 $query = new Query($path . '/print');
-                $query->equal('name', $username);
+                $query->where('name', $username);
                 $active = $client->query($query)->read();
 
                 if (!empty($active)) {
@@ -260,7 +245,7 @@ class MikrotikService
                 }
 
                 $querySecret = new Query('/ppp/secret/print');
-                $querySecret->equal('name', $username);
+                $querySecret->where('name', $username);
                 $secret = $client->query($querySecret)->read();
 
                 if (!empty($secret)) {
@@ -269,7 +254,7 @@ class MikrotikService
             } elseif ($type === 'hotspot') {
                 $path = '/ip/hotspot/active';
                 $query = new Query($path . '/print');
-                $query->equal('name', $username);
+                $query->where('user', $username);
                 $active = $client->query($query)->read();
 
                 if (!empty($active)) {
@@ -277,7 +262,7 @@ class MikrotikService
                 }
 
                 $querySecret = new Query('/ip/hotspot/user/print');
-                $querySecret->equal('name', $username);
+                $querySecret->where('name', $username);
                 $secret = $client->query($querySecret)->read();
 
                 if (!empty($secret)) {
@@ -312,7 +297,7 @@ class MikrotikService
 
             if ($type === 'pppoe') {
                 $query = new Query('/ppp/secret/print');
-                $query->equal('name', $username);
+                $query->where('name', $username);
                 $details = $client->query($query)->read();
                 
                 $secret = $details[0] ?? null;
@@ -324,7 +309,7 @@ class MikrotikService
                     // If no direct rate-limit, check the profile
                     if (!$rateLimit && isset($secret['profile'])) {
                         $profileQuery = new Query('/ppp/profile/print');
-                        $profileQuery->equal('name', $secret['profile']);
+                        $profileQuery->where('name', $secret['profile']);
                         $profile = $client->query($profileQuery)->read();
                         $rateLimit = $profile[0]['rate-limit'] ?? $secret['profile'];
                     }
@@ -332,7 +317,7 @@ class MikrotikService
 
                 // Get active connection for uptime and IP
                 $queryActive = new Query('/ppp/active/print');
-                $queryActive->equal('name', $username);
+                $queryActive->where('name', $username);
                 $active = $client->query($queryActive)->read();
                 
                 return [
@@ -341,7 +326,7 @@ class MikrotikService
                 ];
             } elseif ($type === 'hotspot') {
                 $query = new Query('/ip/hotspot/user/print');
-                $query->equal('name', $username);
+                $query->where('name', $username);
                 $details = $client->query($query)->read();
 
                 $secret = $details[0] ?? null;
@@ -353,14 +338,14 @@ class MikrotikService
                     // If no direct rate-limit, check the profile
                     if (!$rateLimit && isset($secret['profile'])) {
                         $profileQuery = new Query('/ip/hotspot/user/profile/print');
-                        $profileQuery->equal('name', $secret['profile']);
+                        $profileQuery->where('name', $secret['profile']);
                         $profile = $client->query($profileQuery)->read();
                         $rateLimit = $profile[0]['rate-limit'] ?? $secret['profile'];
                     }
                 }
 
                 $queryActive = new Query('/ip/hotspot/active/print');
-                $queryActive->equal('name', $username);
+                $queryActive->where('user', $username);
                 $active = $client->query($queryActive)->read();
 
                 return [
@@ -491,8 +476,22 @@ class MikrotikService
             // 1. Update status secret (Enable/Disable) & Profile
             if ($type === 'pppoe') {
                 $query = new Query('/ppp/secret/print');
-                $query->equal('name', $username);
+                $query->where('name', $username);
                 $resp = $client->query($query)->read();
+                
+                // Case-insensitive fallback
+                if (empty($resp)) {
+                    $allSecrets = $client->query(new Query('/ppp/secret/print'))->read();
+                    if (is_array($allSecrets)) {
+                        foreach ($allSecrets as $sec) {
+                            if (strtolower($sec['name'] ?? '') === strtolower($username)) {
+                                $resp = [$sec];
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 if (!empty($resp)) {
                     $id = $resp[0]['.id'];
                     $setQuery = (new Query('/ppp/secret/set'))
@@ -508,11 +507,12 @@ class MikrotikService
                     
                     // Putuskan koneksi aktif agar modem/router langsung melakukan dial-in ulang secara fresh
                     $activeQuery = new Query('/ppp/active/print');
-                    $activeQuery->where('name', $username);
                     $activeResp = $client->query($activeQuery)->read();
-                    if (!empty($activeResp)) {
+                    if (is_array($activeResp)) {
                         foreach ($activeResp as $active) {
-                            $client->query((new Query('/ppp/active/remove'))->equal('.id', $active['.id']))->read();
+                            if (strtolower($active['name'] ?? '') === strtolower($username)) {
+                                $client->query((new Query('/ppp/active/remove'))->equal('.id', $active['.id']))->read();
+                            }
                         }
                     }
                     $found = true;
@@ -532,8 +532,22 @@ class MikrotikService
                 }
             } elseif ($type === 'hotspot') {
                 $query = new Query('/ip/hotspot/user/print');
-                $query->equal('name', $username);
+                $query->where('name', $username);
                 $resp = $client->query($query)->read();
+                
+                // Case-insensitive fallback
+                if (empty($resp)) {
+                    $allUsers = $client->query(new Query('/ip/hotspot/user/print'))->read();
+                    if (is_array($allUsers)) {
+                        foreach ($allUsers as $usr) {
+                            if (strtolower($usr['name'] ?? '') === strtolower($username)) {
+                                $resp = [$usr];
+                                break;
+                            }
+                        }
+                    }
+                }
+
                 if (!empty($resp)) {
                     $id = $resp[0]['.id'];
                     $setQuery = (new Query('/ip/hotspot/user/set'))
@@ -546,11 +560,12 @@ class MikrotikService
                     
                     // Putuskan sesi aktif agar pengguna dipaksa login ulang secara fresh
                     $activeQuery = new Query('/ip/hotspot/active/print');
-                    $activeQuery->where('user', $username);
                     $activeResp = $client->query($activeQuery)->read();
-                    if (!empty($activeResp)) {
-                        foreach ($activeResp as $active) {
-                            $client->query((new Query('/ip/hotspot/active/remove'))->equal('.id', $active['.id']))->read();
+                    if (is_array($activeResp)) {
+                        foreach ($activeResp as $active) { 
+                            if (strtolower($active['user'] ?? '') === strtolower($username)) {
+                                $client->query((new Query('/ip/hotspot/active/remove'))->equal('.id', $active['.id']))->read();
+                            }
                         }
                     }
                     $found = true;
@@ -565,214 +580,119 @@ class MikrotikService
                     $found = true;
                 }
             } elseif ($type === 'static') {
-                // 1. Update Simple Queue (Limit Speed)
-                $targetQueue = $this->findSimpleQueue($client, $username, $ip, $router);
-                
-                if ($targetQueue) {
-                    $id = $targetQueue['.id'];
-                    $setQuery = (new Query('/queue/simple/set'))
-                        ->equal('.id', $id)
-                        ->equal('disabled', $disable ? 'yes' : 'no');
-                    if ($profileName && $profileName !== 'custom') {
-                        $limit = null;
-                        if (preg_match('/(\d+)\s*(mb|m)/i', $profileName, $matches)) {
-                            $mb = $matches[1];
-                            $limit = "{$mb}M/{$mb}M";
-                        } elseif (preg_match('/(\d+)k/i', $profileName, $matches)) {
-                            $k = $matches[1];
-                            $limit = "{$k}k/{$k}k";
-                        }
-                        if ($limit) {
-                            $setQuery->equal('max-limit', $limit);
-                        }
-                    }
-                    $client->query($setQuery)->read();
-                    $found = true;
-                } else {
-                    // Auto-create Simple Queue if IP is provided
-                    if ($ip) {
-                        $limit = '10M/10M';
-                        if ($profileName && $profileName !== 'custom') {
-                            if (preg_match('/(\d+)\s*(mb|m)/i', $profileName, $matches)) {
-                                $mb = $matches[1];
-                                $limit = "{$mb}M/{$mb}M";
-                            } elseif (preg_match('/(\d+)k/i', $profileName, $matches)) {
-                                $k = $matches[1];
-                                $limit = "{$k}k/{$k}k";
-                            }
-                        }
-                        $addQuery = (new Query('/queue/simple/add'))
-                            ->equal('name', $username)
-                            ->equal('target', $ip)
-                            ->equal('max-limit', $limit)
-                            ->equal('disabled', $disable ? 'yes' : 'no');
-                        $client->query($addQuery)->read();
-                        $found = true;
-                    }
-                }
+                // ============================================================
+                // ISOLIR untuk Static IP: menggunakan Address-List + Global Rule
+                // Cara kerja yang benar di MikroTik:
+                //   1. Tambah/hapus IP dari address-list "ISOLIR"
+                //   2. Pastikan ada SATU global rule permanen yang drop semua
+                //      traffic dari address-list "ISOLIR" (bukan per-IP rule)
+                //   3. Hapus per-IP rule lama (penyebab duplikasi)
+                //   4. Kick ARP entry agar koneksi langsung terputus
+                // ============================================================
 
-                // 2. Update Address List (Block Traffic via Firewall)
+                // Step 1: Kelola Address-List ISOLIR
                 if ($ip) {
                     $listName = 'ISOLIR';
-                    
-                    // Tarik semua entri di address-list untuk difilter secara andal di PHP
                     $addrQuery = new Query('/ip/firewall/address-list/print');
+                    $addrQuery->where('list', $listName);
                     $allAddrs = $client->query($addrQuery)->read();
-                    
-                    $matchedAddrs = [];
+
+                    $matchedEntry = null;
                     if (is_array($allAddrs)) {
                         foreach ($allAddrs as $addr) {
-                            $addrIp = $addr['address'] ?? '';
-                            $addrListName = $addr['list'] ?? '';
-                            $addrComment = $addr['comment'] ?? '';
-                            
-                            if ($addrListName === $listName) {
-                                // Pencocokan berdasarkan kesamaan IP (bisa dengan subnet /32) ATAU comment yang mengandung username
-                                $ipMatch = ($addrIp === $ip || $addrIp === $ip . '/32');
-                                $commentMatch = (strpos(strtolower($addrComment), strtolower($username)) !== false);
-                                
-                                if ($ipMatch || $commentMatch) {
-                                    $matchedAddrs[] = $addr;
-                                }
-                            }
-                        }
-                    }
-                    
-                    if ($disable) {
-                        // Jika isolir (block) and belum ada di list, buat baru
-                        if (empty($matchedAddrs)) {
-                            $addQuery = (new Query('/ip/firewall/address-list/add'))
-                                ->equal('address', $ip)
-                                ->equal('list', $listName)
-                                ->equal('comment', 'ISOLIR OTOMATIS: ' . $username);
-                            $client->query($addQuery)->read();
-                        }
-                    } else {
-                        // Jika aktif (unblock), hapus SEMUA yang cocok dari list
-                        if (!empty($matchedAddrs)) {
-                            foreach ($matchedAddrs as $addr) {
-                                if (isset($addr['.id'])) {
-                                    $remQuery = (new Query('/ip/firewall/address-list/remove'))
-                                        ->equal('.id', $addr['.id']);
-                                    $client->query($remQuery)->read();
-                                }
-                            }
-                        }
-                    }
-                    $found = true; // Tandai ditemukan jika berhasil update address-list
-                }
-
-                // 3. Update Firewall Filter Rule (Custom method requested by user)
-                // Mencari rule secara cerdas: mencakup pencocokan komentar secara case-insensitive ATAU pencocokan IP tujuan
-                $filterPath = '/ip/firewall/filter';
-                $filterQuery = new Query($filterPath . '/print');
-                $filterResp = $client->query($filterQuery)->read();
-                
-                $targetRule = null;
-                if (is_array($filterResp)) {
-                    foreach ($filterResp as $filter) {
-                        $fChain = $filter['chain'] ?? '';
-                        $fAction = $filter['action'] ?? '';
-                        $fComment = $filter['comment'] ?? '';
-                        $fDstAddr = $filter['dst-address'] ?? '';
-                        
-                        if ($fChain === 'forward' && $fAction === 'drop') {
-                            $commentMatch = (strtolower(trim($fComment)) === strtolower(trim($username)));
-                            $ipMatch = ($ip && strpos($fDstAddr, $ip) !== false);
-                            
-                            if ($commentMatch || $ipMatch) {
-                                $targetRule = $filter;
+                            if (($addr['address'] ?? '') === $ip) {
+                                $matchedEntry = $addr;
                                 break;
                             }
                         }
                     }
-                }
-                
-                if (!$targetRule) {
-                    // Jika rule belum ada, buat baru di urutan paling ATAS (place-before=0)
-                    if ($ip) {
-                        $addFilterQuery = (new Query($filterPath . '/add'))
-                            ->equal('chain', 'forward')
-                            ->equal('action', 'drop')
-                            ->equal('dst-address', $ip)
-                            ->equal('comment', $username)
-                            ->equal('disabled', $disable ? 'no' : 'yes')
-                            ->equal('place-before', '0'); // Taruh di paling atas
-                        $client->query($addFilterQuery)->read();
-                    }
-                } else {
-                    $id = $targetRule['.id'];
-                    
-                    // Set status dan pindahkan ke urutan 0 untuk memastikan pemblokiran bekerja
-                    $setQuery = (new Query($filterPath . '/set'))
-                        ->equal('.id', $id)
-                        ->equal('dst-address', $ip) // Pastikan IP sesuai
-                        ->equal('disabled', $disable ? 'no' : 'yes');
-                    $client->query($setQuery)->read();
-                    
-                    // Pindahkan ke paling atas (hanya jika sedang diisolir)
+
                     if ($disable) {
-                        $moveQuery = (new Query($filterPath . '/move'))
-                            ->equal('.id', $id)
-                            ->equal('destination', '0');
-                        $client->query($moveQuery)->read();
+                        // Tambahkan ke ISOLIR list jika belum ada
+                        if (!$matchedEntry) {
+                            $client->query((new Query('/ip/firewall/address-list/add'))
+                                ->equal('address', $ip)
+                                ->equal('list', $listName)
+                                ->equal('comment', $username))->read();
+                        }
+                    } else {
+                        // Hapus dari ISOLIR list (aktifkan kembali)
+                        if ($matchedEntry) {
+                            $client->query((new Query('/ip/firewall/address-list/remove'))
+                                ->equal('.id', $matchedEntry['.id']))->read();
+                        }
+                    }
+                    $found = true;
+                }
+
+                // Step 2: Pastikan ada GLOBAL drop rule untuk address-list ISOLIR
+                //         Hapus per-IP rule lama yang bisa menyebabkan duplikasi
+                $filterPath = '/ip/firewall/filter';
+                $filterResp = $client->query(new Query($filterPath . '/print'))->read();
+                $hasGlobalIsolirForward = false;
+
+                if (is_array($filterResp)) {
+                    foreach ($filterResp as $filter) {
+                        if (!is_array($filter)) continue;
+                        $fChain   = $filter['chain']             ?? '';
+                        $fAction  = $filter['action']            ?? '';
+                        $fSrcList = $filter['src-address-list']  ?? '';
+                        $fSrc     = $filter['src-address']       ?? '';
+                        $fComment = $filter['comment']           ?? '';
+
+                        // Hapus per-IP drop rule lama (penyebab duplikasi di foto)
+                        if ($fChain === 'forward' && $fAction === 'drop' && empty($fSrcList) && $ip) {
+                            if (strpos($fSrc, $ip) !== false ||
+                                strtolower(trim($fComment)) === strtolower(trim($username ?? ''))) {
+                                $client->query((new Query($filterPath . '/remove'))
+                                    ->equal('.id', $filter['.id']))->read();
+                                continue;
+                            }
+                        }
+
+                        // Cek apakah global ISOLIR rule sudah ada
+                        if ($fChain === 'forward' && $fAction === 'drop' && $fSrcList === 'ISOLIR') {
+                            $hasGlobalIsolirForward = true;
+                        }
                     }
                 }
-                $found = true;
 
-                // Clear active connections and ARP table if un-isolating
-                if (!$disable && $ip) {
-                    // 1. Clear Active Connections from MikroTik Connection Tracking
-                    try {
-                        $conSrc = (new Query('/ip/firewall/connection/print'))->add('?src-address~' . $ip);
-                        $conSrcResp = $client->query($conSrc)->read();
-                        
-                        $conDst = (new Query('/ip/firewall/connection/print'))->add('?dst-address~' . $ip);
-                        $conDstResp = $client->query($conDst)->read();
-                        
-                        $connections = [];
-                        if (is_array($conSrcResp)) {
-                            foreach ($conSrcResp as $c) {
-                                if (isset($c['.id'])) {
-                                    $connections[$c['.id']] = $c;
-                                }
-                            }
-                        }
-                        if (is_array($conDstResp)) {
-                            foreach ($conDstResp as $c) {
-                                if (isset($c['.id'])) {
-                                    $connections[$c['.id']] = $c;
-                                }
-                            }
-                        }
-                        
-                        foreach ($connections as $connId => $conn) {
-                            $client->query((new Query('/ip/firewall/connection/remove'))
-                                ->equal('.id', $connId))->read();
-                        }
-                        \Log::info("MikrotikService: Cleared " . count($connections) . " Conntrack connections for IP: " . $ip);
-                    } catch (\Exception $e) {
-                        \Log::warning("MikrotikService: Failed to clear Conntrack for IP {$ip}: " . $e->getMessage());
-                    }
+                // Buat global rule sekali jika belum ada
+                if (!$hasGlobalIsolirForward) {
+                    $client->query((new Query($filterPath . '/add'))
+                        ->equal('chain', 'forward')
+                        ->equal('action', 'drop')
+                        ->equal('src-address-list', 'ISOLIR')
+                        ->equal('comment', 'ISOLIR-GLOBAL: Drop isolir pelanggan')
+                        ->equal('disabled', 'no')
+                        ->equal('place-before', '0')
+                    )->read();
+                    \Log::info("Mikrotik: Global ISOLIR rule dibuat di router {$router->nama_router}");
+                }
 
-                    // 2. Clear Stale ARP Entry from MikroTik ARP Table
+                // Step 3: Kick ARP entry agar koneksi langsung terputus (untuk static IP)
+                if ($disable && $ip) {
                     try {
-                        $arpQuery = (new Query('/ip/arp/print'))->where('address', $ip);
+                        $arpQuery = new Query('/ip/arp/print');
+                        $arpQuery->where('address', $ip);
                         $arpResp = $client->query($arpQuery)->read();
-                        
                         if (is_array($arpResp)) {
-                            foreach ($arpResp as $arp) {
-                                if (isset($arp['.id'])) {
+                            foreach ($arpResp as $arpEntry) {
+                                if (isset($arpEntry['.id'])) {
                                     $client->query((new Query('/ip/arp/remove'))
-                                        ->equal('.id', $arp['.id']))->read();
+                                        ->equal('.id', $arpEntry['.id']))->read();
                                 }
                             }
-                            \Log::info("MikrotikService: Flushed ARP entry for IP: " . $ip);
                         }
-                    } catch (\Exception $e) {
-                        \Log::warning("MikrotikService: Failed to clear ARP entry for IP {$ip}: " . $e->getMessage());
+                    } catch (\Exception $arpEx) {
+                        \Log::warning("Mikrotik: Gagal hapus ARP {$ip}: " . $arpEx->getMessage());
                     }
                 }
+
+                if (!$ip) {
+                    \Log::warning("Mikrotik setSecretStatus: Pelanggan {$username} static tidak punya IP, isolir address-list dilewati.");
+                }
+                $found = true; // static selalu dianggap ditemukan (dikelola via address-list)
             }
 
             if (!$found) {
@@ -783,18 +703,24 @@ class MikrotikService
             // 2. Tendang sesi aktif jika di-disable agar koneksi terputus saat itu juga
             if ($disable) {
                 if ($type === 'pppoe') {
-                    $query = new Query('/ppp/active/print');
-                    $query->equal('name', $username);
-                    $resp = $client->query($query)->read();
-                    if (!empty($resp)) {
-                        $client->query((new Query('/ppp/active/remove'))->equal('.id', $resp[0]['.id']))->read();
+                    $activeQuery = new Query('/ppp/active/print');
+                    $activeResp = $client->query($activeQuery)->read();
+                    if (is_array($activeResp)) {
+                        foreach ($activeResp as $active) {
+                            if (strtolower($active['name'] ?? '') === strtolower($username)) {
+                                $client->query((new Query('/ppp/active/remove'))->equal('.id', $active['.id']))->read();
+                            }
+                        }
                     }
                 } elseif ($type === 'hotspot') {
-                    $query = new Query('/ip/hotspot/active/print');
-                    $query->equal('user', $username);
-                    $resp = $client->query($query)->read();
-                    if (!empty($resp)) {
-                        $client->query((new Query('/ip/hotspot/active/remove'))->equal('.id', $resp[0]['.id']))->read();
+                    $activeQuery = new Query('/ip/hotspot/active/print');
+                    $activeResp = $client->query($activeQuery)->read();
+                    if (is_array($activeResp)) {
+                        foreach ($activeResp as $active) {
+                            if (strtolower($active['user'] ?? '') === strtolower($username)) {
+                                $client->query((new Query('/ip/hotspot/active/remove'))->equal('.id', $active['.id']))->read();
+                            }
+                        }
                     }
                 }
             }

@@ -7,7 +7,7 @@
 
 <div class="card">
   <div class="card-body">
-    <form action="{{ route('pelanggan.update', $pelanggan->id_pelanggan) }}" method="POST">
+    <form action="{{ route('pelanggan.update', $pelanggan->id_pelanggan) }}" method="POST" enctype="multipart/form-data">
       @csrf
       @method('PUT')
       <div class="row">
@@ -31,6 +31,19 @@
         <div class="col-md-6 mb-3">
           <label class="form-label">Alamat</label>
           <textarea name="alamat" class="form-control" required>{{ $pelanggan->alamat }}</textarea>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Foto Rumah</label>
+          <input type="file" name="foto_rumah" class="form-control" accept="image/*" />
+          <small class="text-muted">Opsional, upload foto baru untuk mengganti foto lama.</small>
+          @if($pelanggan->foto_rumah)
+            <div class="mt-2">
+              <a href="{{ asset('storage/' . $pelanggan->foto_rumah) }}" target="_blank">
+                <img src="{{ asset('storage/' . $pelanggan->foto_rumah) }}" alt="Foto Rumah" class="img-thumbnail" style="max-height: 100px;" />
+              </a>
+              <div class="small text-muted">Klik gambar untuk memperbesar</div>
+            </div>
+          @endif
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Latitude</label>
@@ -128,6 +141,19 @@
                 @endfor
             </select>
             <small class="text-muted">Tagihan otomatis dibuat setiap bulan pada tanggal ini.</small>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Tanggal Pasang (PSB)</label>
+            <input type="date" name="tanggal_pasang" class="form-control" value="{{ $pelanggan->tanggal_pasang ? \Carbon\Carbon::parse($pelanggan->tanggal_pasang)->format('Y-m-d') : date('Y-m-d') }}" />
+            <small class="text-muted">Tanggal pemasangan internet baru.</small>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label d-block">Opsi Bonus Gratis Pemasangan</label>
+            <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" name="gratis_pemasangan" id="gratis_pemasangan" value="1" {{ $pelanggan->gratis_pemasangan ? 'checked' : '' }}>
+                <label class="form-check-label" for="gratis_pemasangan">Aktifkan Bonus Gratis Layanan 2 Bulan Pertama</label>
+            </div>
+            <small class="text-muted">Jika diaktifkan, 2 bulan pertama gratis (Jika pasang &lt; tgl 27, gratis terhitung bulan ini. Jika &gt;= tgl 27, gratis mulai bulan depan).</small>
         </div>
       </div>
       <button type="submit" class="btn btn-primary">Update</button>

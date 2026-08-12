@@ -44,8 +44,8 @@ class DatabaseSeeder extends Seeder
         // Assign all permissions to Admin
         $adminRole->permissions()->sync(Permission::all()->pluck('id_permission'));
         
-        // Assign dashboard, monitoring, and reports to Manager
-        $managerRole->permissions()->sync(Permission::whereIn('code', ['dashboard_view', 'mikrotik_monitor', 'report_view'])->pluck('id_permission'));
+        // Assign dashboard, monitoring, reports, customer management, and billing view to Manager
+        $managerRole->permissions()->sync(Permission::whereIn('code', ['dashboard_view', 'mikrotik_monitor', 'report_view', 'pelanggan_manage', 'billing_view'])->pluck('id_permission'));
         
         // Assign route and visit to Teknisi
         $teknisiRole->permissions()->sync(Permission::whereIn('code', ['dashboard_view', 'rute_manage', 'tiket_manage'])->pluck('id_permission'));
@@ -127,5 +127,11 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        // Call Custom Seeders
+        $this->call([
+            ModemSeeder::class,
+            TutorialSeeder::class,
+        ]);
     }
 }

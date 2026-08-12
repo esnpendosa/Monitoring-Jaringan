@@ -9,10 +9,10 @@ $containerFooter = !empty($containerNav) ? $containerNav : 'container-fluid';
             <div class="text-body">
                 © <script>
                 document.write(new Date().getFullYear())
-                </script>, Muhammad As'ad Muhibbin Akbar - <a href="https://umg.ac.id" target="_blank" class="footer-link">Teknik Informatika UMG</a>
+                </script>, <a href="#" class="footer-link fw-semibold">CV. Rozitech Multimedia Indonesia</a>
             </div>
             <div class="d-none d-lg-inline-block">
-                <span class="footer-link me-4">Skripsi - Manajemen Jaringan WiFi</span>
+                <span class="footer-link me-4">Sistem Manajemen Jaringan WiFi</span>
             </div>
         </div>
     </div>

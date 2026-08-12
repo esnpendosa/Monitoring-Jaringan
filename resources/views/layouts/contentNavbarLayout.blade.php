@@ -74,6 +74,13 @@ $container = ($container ?? 'container-xxl');
                             </div>
                         @endif
 
+                        @if(session('warning'))
+                            <div class="alert alert-warning alert-dismissible" role="alert">
+                                <i class="bx bx-error-circle me-1"></i> {{ session('warning') }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        @endif
+
                         @yield('content')
 
                     </div>

@@ -12,8 +12,24 @@ class TagihanController extends Controller
     {
         $search = $request->query('search');
         $status = $request->query('status');
+        $filterKhusus = $request->query('filter_khusus');
+        $filterBulan = $request->query('filter_bulan');
+        $filterTahun = $request->query('filter_tahun');
         $user = auth()->user();
-        $query = Tagihan::with('pelanggan');
+        
+        // OPTIMIZATION: Eager load relationships to prevent N+1 queries
+        // Note: select tagihan.* explicitly because of join below
+        $query = Tagihan::with(['pelanggan' => function($q) {
+            $q->select('id_pelanggan', 'kode_pelanggan', 'nama_pelanggan', 'id_user', 'no_wa', 'wa_active');
+        }]);
+
+        if ($filterBulan) {
+            $query->where('bulan', $filterBulan);
+        }
+
+        if ($filterTahun) {
+            $query->where('tahun', $filterTahun);
+        }
 
         if ($search) {
             $query->where(function ($mainQuery) use ($search) {
@@ -51,21 +67,132 @@ class TagihanController extends Controller
             $query->where('status', $status);
         }
 
+        if ($filterKhusus) {
+            if ($filterKhusus === 'unpaid_3_months') {
+                $customerIds = Tagihan::where('status', 'unpaid')
+                    ->groupBy('id_pelanggan')
+                    ->havingRaw('count(*) >= 3')
+                    ->pluck('id_pelanggan');
+                $query->whereIn('id_pelanggan', $customerIds);
+            } elseif ($filterKhusus === 'unpaid_2_months') {
+                $customerIds = Tagihan::where('status', 'unpaid')
+                    ->groupBy('id_pelanggan')
+                    ->havingRaw('count(*) >= 2')
+                    ->pluck('id_pelanggan');
+                $query->whereIn('id_pelanggan', $customerIds);
+            } elseif ($filterKhusus === 'paid_3_months') {
+                $paidGroups = Tagihan::select('id_pelanggan', \Illuminate\Support\Facades\DB::raw('DATE(paid_at) as pay_date'))
+                    ->where('status', 'paid')
+                    ->whereNotNull('paid_at')
+                    ->groupBy('id_pelanggan', \Illuminate\Support\Facades\DB::raw('DATE(paid_at)'))
+                    ->havingRaw('count(*) >= 3')
+                    ->get();
+                
+                $query->where(function($q) use ($paidGroups) {
+                    foreach ($paidGroups as $group) {
+                        $q->orWhere(function($sub) use ($group) {
+                            $sub->where('id_pelanggan', $group->id_pelanggan)
+                                ->whereDate('paid_at', $group->pay_date);
+                        });
+                    }
+                    if ($paidGroups->isEmpty()) {
+                        $q->whereNull('id_tagihan');
+                    }
+                });
+            }
+        }
+
         // If user is a customer, only show their own bills
-        if ($user->id_role == 4) {
+        $roleName = $user->role ? $user->role->name : 'Pelanggan';
+        $isPelanggan = ($roleName === 'Pelanggan' || $user->id_role == 4);
+
+        if ($isPelanggan) {
             $query->whereHas('pelanggan', function ($q) use ($user) {
                 $q->where('id_user', $user->id);
             });
         }
 
-        $tagihan = $query->latest()->get();
-        $allPelanggan = Pelanggan::where('is_active', true)->orderBy('nama_pelanggan')->get();
+        // Sort: prefix huruf dulu (A, AB, AC, dst), lalu angka secara numerik (1, 2, 10, 100)
+        // Contoh hasil: A1, A2, A10, A100, AB1, AB2, AC1, dst
+        $query->join('pelanggan', 'pelanggan.id_pelanggan', '=', 'tagihan.id_pelanggan')
+              ->select('tagihan.*')
+              ->orderByRaw("
+                  REGEXP_REPLACE(pelanggan.kode_pelanggan, '[0-9]', ''),
+                  CAST(REGEXP_REPLACE(pelanggan.kode_pelanggan, '[^0-9]', '') AS UNSIGNED),
+                  tagihan.tahun,
+                  tagihan.bulan
+              ");
+        
+        // OPTIMIZATION: Use pagination to limit records loaded per page
+        $tagihan = $query->paginate(50)->appends($request->query());
+
+        // OPTIMIZATION: Only load active customers for modal, with minimal fields
+        $allPelanggan = Pelanggan::where('is_active', true)
+            ->select('id_pelanggan', 'kode_pelanggan', 'nama_pelanggan', 'harga_layanan')
+            ->orderBy('kode_pelanggan')
+            ->get();
+            
         return view('content.billing.index', compact('tagihan', 'allPelanggan'));
+    }
+
+    public function store(Request $request)
+    {
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
+
+        $request->validate([
+            'id_pelanggan' => 'required|exists:pelanggan,id_pelanggan',
+            'bulan' => 'required|integer|min:1|max:12',
+            'tahun' => 'required|integer',
+            'jumlah' => 'required|numeric|min:0',
+            'status' => 'required|in:unpaid,paid,pending,cancelled',
+            'metode_pembayaran' => 'nullable|string',
+            'paid_at' => 'nullable|date',
+            'catatan_admin' => 'nullable|string',
+        ]);
+
+        $exists = Tagihan::where('id_pelanggan', $request->id_pelanggan)
+            ->where('bulan', $request->bulan)
+            ->where('tahun', $request->tahun)
+            ->exists();
+
+        if ($exists) {
+            return back()->with('error', 'Gagal: Tagihan untuk pelanggan tersebut pada periode bulan/tahun ini sudah ada.');
+        }
+
+        $data = $request->only(['id_pelanggan', 'bulan', 'tahun', 'jumlah', 'status', 'metode_pembayaran', 'paid_at', 'catatan_admin']);
+        $data['bayar_di_awal'] = $request->has('bayar_di_awal');
+
+        if ($data['status'] !== 'paid') {
+            $data['paid_at'] = null;
+            $data['metode_pembayaran'] = null;
+            $data['bayar_di_awal'] = false;
+        }
+
+        $tagihan = Tagihan::create($data);
+
+        if ($tagihan->status === 'paid') {
+            $pelanggan = $tagihan->pelanggan;
+            if ($pelanggan && $pelanggan->id_router) {
+                try {
+                    $mikrotikService = app(\App\Services\MikrotikService::class);
+                    $success = $mikrotikService->setSecretStatus($pelanggan->router, $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan, $pelanggan->mikrotik_type, false, $pelanggan->ip_address);
+                    if ($success) {
+                        $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
+                    }
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Gagal sync Mikrotik pada tambah tagihan: ' . $e->getMessage());
+                }
+            }
+        }
+
+        \App\Helpers\ActivityLogger::log('Menambahkan data tagihan manual #' . $tagihan->id_tagihan . ' (' . ($tagihan->pelanggan ? $tagihan->pelanggan->nama_pelanggan : 'Umum') . ') status: ' . $tagihan->status, 'tagihan');
+
+        return back()->with('success', 'Tagihan manual berhasil disimpan.');
     }
 
     public function updateAmount(Request $request, Tagihan $tagihan)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         $request->validate([
             'jumlah' => 'required|numeric|min:0',
@@ -82,7 +209,7 @@ class TagihanController extends Controller
 
     public function update(Request $request, Tagihan $tagihan)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         $request->validate([
             'bulan' => 'required|integer|min:1|max:12',
@@ -90,31 +217,44 @@ class TagihanController extends Controller
             'jumlah' => 'required|numeric|min:0',
             'status' => 'required|in:unpaid,paid,pending,cancelled',
             'created_at' => 'nullable|date',
+            'metode_pembayaran' => 'nullable|string',
         ]);
 
         $oldStatus = $tagihan->status;
-        $tagihan->update($request->all());
+        $data = $request->all();
+        $data['bayar_di_awal'] = $request->has('bayar_di_awal');
+        
+        if ($data['status'] !== 'paid') {
+            $data['bayar_di_awal'] = false;
+            $data['paid_at'] = null;
+            $data['metode_pembayaran'] = null;
+        }
+
+        $tagihan->update($data);
 
         if ($oldStatus !== 'paid' && $tagihan->status === 'paid') {
-            $tagihan->update(['paid_at' => now()]);
+            $tagihan->update(['paid_at' => $tagihan->paid_at ?? now()]);
             
             $pelanggan = $tagihan->pelanggan;
             if ($pelanggan && $pelanggan->id_router) {
                 $mikrotikService = app(\App\Services\MikrotikService::class);
                 $success = $mikrotikService->setSecretStatus($pelanggan->router, $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan, $pelanggan->mikrotik_type, false, $pelanggan->ip_address);
                 if ($success) {
-                    $pelanggan->update(['is_active' => true]);
+                    $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
                 }
             }
 
-            // Kirim Nota
+            // Kirim Nota setelah response (non-blocking)
             if ($pelanggan && $pelanggan->no_wa && $pelanggan->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
-                try {
-                    $waClient = new \App\Services\WhatsappClient();
-                    $waClient->sendReceipt($tagihan, true);
-                } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Gagal kirim nota WA dari update: ' . $e->getMessage());
-                }
+                $tid = $tagihan->id_tagihan;
+                app()->terminating(function () use ($tid) {
+                    try {
+                        $t = \App\Models\Tagihan::find($tid);
+                        if ($t) (new \App\Services\WhatsappClient())->sendReceipt($t, true);
+                    } catch (\Exception $e) {
+                        \Illuminate\Support\Facades\Log::error('Gagal kirim nota WA dari update: ' . $e->getMessage());
+                    }
+                });
             }
         }
 
@@ -125,7 +265,7 @@ class TagihanController extends Controller
 
     public function destroy(Tagihan $tagihan)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         try {
             // Hapus file fisik bukti transfer jika ada
@@ -146,7 +286,7 @@ class TagihanController extends Controller
 
     public function deleteAll()
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         try {
             // Hapus semua file fisik bukti transfer terlebih dahulu
@@ -169,7 +309,7 @@ class TagihanController extends Controller
 
     public function destroyDirect(Tagihan $tagihan)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         try {
             // Hapus file fisik bukti transfer jika ada
@@ -190,7 +330,7 @@ class TagihanController extends Controller
 
     public function deleteAllDirect()
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         try {
             // Hapus semua file fisik bukti transfer terlebih dahulu
@@ -252,37 +392,68 @@ class TagihanController extends Controller
                 ->exists();
 
             if (!$exists && $p->harga_layanan > 0) {
-                Tagihan::create([
-                    'id_pelanggan' => $p->id_pelanggan,
-                    'bulan' => $currentMonth,
-                    'tahun' => $currentYear,
-                    'jumlah' => $p->harga_layanan,
-                    'status' => 'unpaid',
-                    'created_at' => $request->created_at ?? now(),
-                ]);
-                $generatedCount++;
+                if ($p->isBulanGratis($currentMonth, $currentYear)) {
+                    Tagihan::create([
+                        'id_pelanggan' => $p->id_pelanggan,
+                        'bulan' => $currentMonth,
+                        'tahun' => $currentYear,
+                        'jumlah' => 0,
+                        'status' => 'paid',
+                        'metode_pembayaran' => 'Bonus Gratis',
+                        'paid_at' => $request->created_at ?? now(),
+                        'catatan_admin' => 'Bonus Gratis Pemasangan (2 Bulan Pertama)',
+                        'created_at' => $request->created_at ?? now(),
+                    ]);
+                    $generatedCount++;
 
-                // Kirim Notifikasi WA jika nomor WA ada dan aktif secara global serta aktif per pelanggan
-                if ($p->no_wa && $p->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
-                    try {
-                        $monthName = date('F', mktime(0, 0, 0, $currentMonth, 10));
-                        $message = "🔔 *PEMBERITAHUAN TAGIHAN BARU*\n\n";
-                        $message .= "Halo *" . $p->kode_pelanggan . "* " . $p->nama_pelanggan . ",\n\n";
-                        $message .= "Tagihan internet Anda untuk periode *" . $monthName . " " . $currentYear . "* telah terbit pembayaran maximal per tgl 10.\n\n";
-                        $message .= "Jumlah: *Rp " . number_format($p->harga_layanan) . "*\n";
-                        $message .= "Status: *BELUM BAYAR*\n\n";
-                        $message .= "Silakan lakukan pembayaran agar layanan tetap aktif.\n";
-                        $message .= "Ketik *Cek Tagihan* untuk melihat detail pembayaran.\n\n";
-                        $message .= "Pembayaran Melalui Rekening  :\n";
-                        $message .= "BRI = 621001017663537\n";
-                        $message .= "BCA = 7415234155\n";
-                        $message .= "Dana = 082187827382\n\n";
-                        $message .= "Semua AN/ FACHRUR ROZI\n\n";
-                        $message .= "Setelah Melakukan Pembayaran Silahkan Screenshoot / Konfirmasi Pembayaran Melalui Whatsapp wa.me/+6285604118932";
+                    // Kirim Notifikasi WA Promo Gratis
+                    if ($p->no_wa && $p->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
+                        try {
+                            $monthName = date('F', mktime(0, 0, 0, $currentMonth, 10));
+                            $message = "🎉 *PROMO BONUS GRATIS LAYANAN*\n\n";
+                            $message .= "Halo *" . $p->kode_pelanggan . "* " . $p->nama_pelanggan . ",\n\n";
+                            $message .= "Tagihan internet Anda untuk periode *" . $monthName . " " . $currentYear . "* telah terbit.\n\n";
+                            $message .= "Status: *LUNAS (PROMO GRATIS)*\n";
+                            $message .= "Jumlah Tagihan: *Rp 0*\n\n";
+                            $message .= "Terima kasih telah memilih layanan internet kami! Nikmati koneksi Anda nggih.";
+                            $waClient->sendMessage($p->no_wa, ['text' => $message], true);
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi tagihan gratis: ' . $e->getMessage());
+                        }
+                    }
+                } else {
+                    Tagihan::create([
+                        'id_pelanggan' => $p->id_pelanggan,
+                        'bulan' => $currentMonth,
+                        'tahun' => $currentYear,
+                        'jumlah' => $p->harga_layanan,
+                        'status' => 'unpaid',
+                        'created_at' => $request->created_at ?? now(),
+                    ]);
+                    $generatedCount++;
 
-                        $waClient->sendMessage($p->no_wa, ['text' => $message]);
-                    } catch (\Exception $e) {
-                        \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi tagihan baru: ' . $e->getMessage());
+                    // Kirim Notifikasi WA jika nomor WA ada dan aktif secara global serta aktif per pelanggan
+                    if ($p->no_wa && $p->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
+                        try {
+                            $monthName = date('F', mktime(0, 0, 0, $currentMonth, 10));
+                            $message = "🔔 *PEMBERITAHUAN TAGIHAN BARU*\n\n";
+                            $message .= "Halo *" . $p->kode_pelanggan . "* " . $p->nama_pelanggan . ",\n\n";
+                            $message .= "Tagihan internet Anda untuk periode *" . $monthName . " " . $currentYear . "* telah terbit pembayaran maximal per tgl 10.\n\n";
+                            $message .= "Jumlah: *Rp " . number_format($p->harga_layanan) . "*\n";
+                            $message .= "Status: *BELUM BAYAR*\n\n";
+                            $message .= "Silakan lakukan pembayaran agar layanan tetap aktif.\n";
+                            $message .= "Ketik *Cek Tagihan* untuk melihat detail pembayaran.\n\n";
+                            $message .= "Pembayaran Melalui Rekening  :\n";
+                            $message .= "BRI = 621001017663537\n";
+                            $message .= "BCA = 7415234155\n";
+                            $message .= "Dana = 082187827382\n\n";
+                            $message .= "Semua AN/ FACHRUR ROZI\n\n";
+                            $message .= "Setelah Melakukan Pembayaran Silahkan Screenshoot / Konfirmasi Pembayaran Melalui Whatsapp wa.me/+6285604118932";
+
+                            $waClient->sendMessage($p->no_wa, ['text' => $message], true);
+                        } catch (\Exception $e) {
+                            \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi tagihan baru: ' . $e->getMessage());
+                        }
                     }
                 }
             }
@@ -331,51 +502,225 @@ class TagihanController extends Controller
         return back()->with('success', 'Bukti pembayaran berhasil diunggah. Menunggu konfirmasi admin.');
     }
 
+    public function editBuktiBayar(Request $request, Tagihan $tagihan)
+    {
+        // Task 2.1: Permission checking (customer owns OR admin/manager)
+        $user = auth()->user();
+        $isAdmin = in_array($user->id_role, [1, 2]); // Admin or Manager
+        $isOwner = $tagihan->pelanggan && $tagihan->pelanggan->id_user == $user->id;
+
+        if (!$isAdmin && !$isOwner) {
+            abort(403, 'Anda tidak memiliki akses untuk mengedit bukti bayar ini');
+        }
+
+        // Task 2.2: File validation - Manual validation to avoid fileinfo dependency
+        if (!$request->hasFile('bukti_bayar')) {
+            return back()->withErrors(['bukti_bayar' => 'File bukti pembayaran harus dilampirkan.']);
+        }
+
+        $file = $request->file('bukti_bayar');
+        
+        // Validate extension
+        $extension = strtolower($file->getClientOriginalExtension());
+        $allowedExtensions = ['jpeg', 'png', 'jpg', 'gif', 'pdf'];
+        
+        if (!in_array($extension, $allowedExtensions)) {
+            return back()->withErrors(['bukti_bayar' => 'Bukti pembayaran harus berupa dokumen gambar (jpg, png, jpeg, gif) atau berkas PDF!']);
+        }
+        
+        // Validate file size (max 3MB)
+        if ($file->getSize() > 3 * 1024 * 1024) {
+            return back()->withErrors(['bukti_bayar' => 'Ukuran file bukti pembayaran maksimal 3MB!']);
+        }
+
+        // Validate metode_pembayaran if provided
+        if ($request->filled('metode_pembayaran') && strlen($request->metode_pembayaran) > 255) {
+            return back()->withErrors(['metode_pembayaran' => 'Metode pembayaran maksimal 255 karakter.']);
+        }
+
+        // Task 2.3: File deletion and upload logic
+        $oldFile = $tagihan->bukti_bayar;
+
+        // Delete old file if exists
+        if ($oldFile) {
+            $filePath = storage_path('app/public/' . $oldFile);
+            if (file_exists($filePath)) {
+                $deleted = @unlink($filePath);
+                if (!$deleted) {
+                    \Illuminate\Support\Facades\Log::warning('Failed to delete old payment proof: ' . $filePath);
+                }
+            }
+        }
+
+        // Upload new file with unique filename
+        $filename = time() . '_' . uniqid() . '.' . $extension;
+        $targetDir = storage_path('app/public/bukti_bayar');
+        
+        if (!file_exists($targetDir)) {
+            @mkdir($targetDir, 0755, true);
+            @chmod($targetDir, 0755);
+        }
+        
+        try {
+            $file->move($targetDir, $filename);
+            @chmod($targetDir . '/' . $filename, 0644);
+            $path = 'bukti_bayar/' . $filename;
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to upload payment proof: ' . $e->getMessage());
+            return back()->withErrors(['bukti_bayar' => 'Gagal mengunggah file. Silakan coba lagi.'])->withInput();
+        }
+
+        // Task 2.4: Status update logic based on user role
+        $data = [
+            'bukti_bayar' => $path,
+        ];
+
+        // Update metode_pembayaran if provided
+        if ($request->filled('metode_pembayaran')) {
+            $data['metode_pembayaran'] = $request->metode_pembayaran;
+        }
+
+        // Status update based on role
+        if (!$isAdmin) {
+            // Customer edits: maintain status as 'unpaid' for admin verification
+            $data['status'] = 'unpaid';
+        } else {
+            // Admin edits: can optionally verify and set to 'paid'
+            if ($request->input('verify_payment')) {
+                $data['status'] = 'paid';
+                $data['paid_at'] = now();
+            } else if ($request->has('status')) {
+                // Allow admin to explicitly set status
+                $data['status'] = $request->status;
+                if ($request->status === 'paid' && !$tagihan->paid_at) {
+                    $data['paid_at'] = now();
+                    }
+                }
+                // If no explicit status change, preserve existing status
+            }
+
+            // Task 2.5: Update database and log activity
+            $tagihan->update($data);
+
+        // Task 2.5: Update database and log activity
+        $tagihan->update($data);
+
+        // Log activity
+        try {
+            $actionDescription = $oldFile ? 'mengganti ' . basename($oldFile) : 'menambahkan bukti baru';
+            \App\Helpers\ActivityLogger::log(
+                'Mengedit bukti bayar tagihan #' . $tagihan->id_tagihan . 
+                ' (' . ($tagihan->pelanggan ? $tagihan->pelanggan->nama_pelanggan : 'Umum') . ') ' .
+                $actionDescription,
+                'tagihan'
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to log activity for payment proof edit: ' . $e->getMessage());
+            // Continue - logging failure should not block the operation
+        }
+
+        return back()->with('success', 'Bukti pembayaran berhasil diperbarui.');
+    }
+
+    public function showEditBuktiBayar(Tagihan $tagihan)
+    {
+        // Permission checking (customer owns OR admin/manager)
+        $user = auth()->user();
+        $isAdmin = in_array($user->id_role, [1, 2]); // Admin or Manager
+        $isOwner = $tagihan->pelanggan && $tagihan->pelanggan->id_user == $user->id;
+
+        if (!$isAdmin && !$isOwner) {
+            abort(403, 'Anda tidak memiliki akses untuk mengedit bukti bayar ini');
+        }
+
+        return view('content.billing.edit-bukti-bayar', compact('tagihan'));
+    }
+
     public function verifikasi(Request $request, Tagihan $tagihan)
     {
-        // Only admin should access this
-        if (auth()->user()->id_role != 1) {
+        // Admin or Manager
+        if (!in_array(auth()->user()->id_role, [1, 2])) {
             abort(403);
         }
 
         $tagihan->update([
             'status' => 'paid',
             'paid_at' => $request->paid_at ?? now(),
+            'metode_pembayaran' => $request->metode_pembayaran ?? $tagihan->metode_pembayaran,
             'catatan_admin' => $request->catatan_admin
         ]);
 
+        // Log the activity
+        try {
+            \App\Helpers\ActivityLogger::log(
+                'Memverifikasi manual pembayaran tagihan #' . $tagihan->id_tagihan . ' (' . ($tagihan->pelanggan ? $tagihan->pelanggan->nama_pelanggan : 'Umum') . ') sebesar Rp ' . number_format($tagihan->jumlah, 0, ',', '.') . ($tagihan->metode_pembayaran ? ' via ' . $tagihan->metode_pembayaran : ''),
+                'tagihan'
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal mencatat log aktivitas verifikasi manual: " . $e->getMessage());
+        }
+
         $pelanggan = $tagihan->pelanggan;
+        $mikrotikWarning = null;
+
         if ($pelanggan && $pelanggan->id_router) {
-            $mikrotikService = app(\App\Services\MikrotikService::class);
-            $success = $mikrotikService->setSecretStatus($pelanggan->router, $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan, $pelanggan->mikrotik_type, false, $pelanggan->ip_address);
-            if ($success) {
-                $pelanggan->update(['is_active' => true]);
-            }
-        }
+            // Tandai aktif di DB terlebih dahulu (pembayaran sudah diverifikasi admin)
+            $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
 
-        // Kirim Notifikasi WA jika nomor WA ada dan aktif secara global serta aktif per pelanggan
-        if ($pelanggan && $pelanggan->no_wa && $pelanggan->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
+            // Sinkronisasi ke MikroTik (best-effort)
             try {
-                $waClient = new \App\Services\WhatsappClient();
-                $waClient->sendReceipt($tagihan, true);
+                $mikrotikService = app(\App\Services\MikrotikService::class);
+                $success = $mikrotikService->setSecretStatus(
+                    $pelanggan->router,
+                    $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan,
+                    $pelanggan->mikrotik_type,
+                    false,
+                    $pelanggan->ip_address
+                );
+                if (!$success) {
+                    $mikrotikWarning = '⚠️ Catatan: Tagihan terverifikasi, namun sinkronisasi otomatis ke MikroTik gagal. Router mungkin offline. Coba jalankan "Aktifkan Pelanggan Lunas" dari menu Pengaturan.';
+                    \Illuminate\Support\Facades\Log::warning("Billing Verifikasi: MikroTik sync failed for {$pelanggan->kode_pelanggan}. Customer marked active in DB but router not updated.");
+                }
             } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi WA: ' . $e->getMessage());
+                $mikrotikWarning = '⚠️ Catatan: Tagihan terverifikasi, namun terjadi error saat sinkronisasi MikroTik: ' . $e->getMessage();
+                \Illuminate\Support\Facades\Log::error("Billing Verifikasi: MikroTik exception for {$pelanggan->kode_pelanggan}: " . $e->getMessage());
             }
+        } elseif ($pelanggan) {
+            // Tidak ada router terkonfigurasi, tetap tandai aktif
+            $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
         }
 
-        return back()->with('success', 'Tagihan berhasil diverifikasi dan layanan diaktifkan.');
+        // Kirim Notifikasi WA setelah response (non-blocking)
+        if ($pelanggan && $pelanggan->no_wa && $pelanggan->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
+            $tid = $tagihan->id_tagihan;
+            app()->terminating(function () use ($tid) {
+                try {
+                    $t = \App\Models\Tagihan::find($tid);
+                    if ($t) (new \App\Services\WhatsappClient())->sendReceipt($t, true);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi WA verifikasi: ' . $e->getMessage());
+                }
+            });
+        }
+
+        $successMsg = 'Tagihan berhasil diverifikasi dan layanan diaktifkan.';
+        if ($mikrotikWarning) {
+            return back()->with('success', $successMsg)->with('warning', $mikrotikWarning);
+        }
+
+        return back()->with('success', $successMsg);
     }
 
     public function settings()
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
         
         return view('content.billing.settings');
     }
 
     public function updateSettings(Request $request)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         // Form 1: Konfigurasi Metode Pembayaran
         if ($request->has('midtrans_merchant_id') || $request->has('manual_methods') || $request->has('gateway_enabled') || $request->has('manual_enabled')) {
@@ -412,7 +757,7 @@ class TagihanController extends Controller
 
     public function clearAllPhoneNumbers()
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         try {
             \App\Models\Pelanggan::query()->update(['no_wa' => null]);
@@ -426,7 +771,7 @@ class TagihanController extends Controller
     {
         // For security, maybe check if user is admin or the owner of the bill
         $user = auth()->user();
-        if ($user && $user->id_role != 1 && $tagihan->pelanggan->id_user != $user->id) {
+        if ($user && !in_array($user->id_role, [1, 2]) && $tagihan->pelanggan->id_user != $user->id) {
             abort(403);
         }
 
@@ -443,7 +788,7 @@ class TagihanController extends Controller
     }
     public function payCash(Tagihan $tagihan)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
         $tagihan->update([
             'status' => 'paid',
@@ -452,32 +797,61 @@ class TagihanController extends Controller
         ]);
 
         $pelanggan = $tagihan->pelanggan;
+        $mikrotikWarning = null;
+
         if ($pelanggan && $pelanggan->id_router) {
-            $mikrotikService = app(\App\Services\MikrotikService::class);
-            $success = $mikrotikService->setSecretStatus($pelanggan->router, $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan, $pelanggan->mikrotik_type, false, $pelanggan->ip_address);
-            if ($success) {
-                $pelanggan->update(['is_active' => true]);
+            // Tandai aktif di DB terlebih dahulu (pembayaran sudah dikonfirmasi admin)
+            $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
+
+            // Sinkronisasi ke MikroTik (best-effort)
+            try {
+                $mikrotikService = app(\App\Services\MikrotikService::class);
+                $success = $mikrotikService->setSecretStatus(
+                    $pelanggan->router,
+                    $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan,
+                    $pelanggan->mikrotik_type,
+                    false,
+                    $pelanggan->ip_address
+                );
+                if (!$success) {
+                    $mikrotikWarning = '⚠️ Catatan: Pembayaran berhasil dicatat, namun sinkronisasi otomatis ke MikroTik gagal. Router mungkin offline. Coba jalankan "Aktifkan Pelanggan Lunas" dari menu Pengaturan.';
+                    \Illuminate\Support\Facades\Log::warning("Billing Cash: MikroTik sync failed for {$pelanggan->kode_pelanggan}. Customer marked active in DB but router not updated.");
+                }
+            } catch (\Exception $e) {
+                $mikrotikWarning = '⚠️ Catatan: Pembayaran berhasil dicatat, namun terjadi error saat sinkronisasi MikroTik: ' . $e->getMessage();
+                \Illuminate\Support\Facades\Log::error("Billing Cash: MikroTik exception for {$pelanggan->kode_pelanggan}: " . $e->getMessage());
             }
+        } elseif ($pelanggan) {
+            // Tidak ada router terkonfigurasi, tetap tandai aktif
+            $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
         }
 
-        // Kirim Notifikasi WA Kwitansi Lunas jika aktif secara global serta aktif per pelanggan
+        // Kirim Notifikasi WA Kwitansi Lunas setelah response (non-blocking)
         if ($pelanggan && $pelanggan->no_wa && $pelanggan->wa_active && \App\Models\Setting::get('wa_billing_notification_enabled', '1') == '1') {
-            try {
-                $waClient = new \App\Services\WhatsappClient();
-                $waClient->sendReceipt($tagihan, true);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi WA Cash: ' . $e->getMessage());
-            }
+            $tid = $tagihan->id_tagihan;
+            app()->terminating(function () use ($tid) {
+                try {
+                    $t = \App\Models\Tagihan::find($tid);
+                    if ($t) (new \App\Services\WhatsappClient())->sendReceipt($t, true);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Gagal kirim notifikasi WA Cash: ' . $e->getMessage());
+                }
+            });
         }
 
         \App\Helpers\ActivityLogger::log('Mengonfirmasi pembayaran Cash untuk tagihan #' . $tagihan->id_tagihan . ' (' . ($tagihan->pelanggan ? $tagihan->pelanggan->nama_pelanggan : 'Umum') . ') sebesar Rp ' . number_format($tagihan->jumlah, 0, ',', '.'), 'tagihan');
 
-        return back()->with('success', 'Pembayaran Cash berhasil dikonfirmasi, WiFi diaktifkan, dan struk terkirim otomatis ke WhatsApp pelanggan!');
+        $successMsg = 'Pembayaran Cash berhasil dikonfirmasi, WiFi diaktifkan, dan struk terkirim otomatis ke WhatsApp pelanggan!';
+        if ($mikrotikWarning) {
+            return back()->with('success', $successMsg)->with('warning', $mikrotikWarning);
+        }
+
+        return back()->with('success', $successMsg);
     }
 
     public function sendReceiptWa(Tagihan $tagihan)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
         
         $pelanggan = $tagihan->pelanggan;
         if (!$pelanggan || !$pelanggan->no_wa) {
@@ -495,22 +869,50 @@ class TagihanController extends Controller
 
     public function runIsolirSync(Request $request)
     {
-        if (auth()->user()->id_role != 1) abort(403);
+        if (!in_array(auth()->user()->id_role, [1, 2])) abort(403);
 
-        $type = $request->query('type', 'all'); // 'disable', 'enable', 'all'
+        $type = $request->query('type', 'all'); // 'disable', 'enable', 'all', 'reminder'
         
         try {
-            if ($type == 'disable' || $type == 'all') {
-                \Illuminate\Support\Facades\Artisan::call('billing:disable-unpaid', ['--force' => true]);
+            if ($type == 'reminder') {
+                if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    pclose(popen("cmd /c start /B php artisan billing:remind --force", "r"));
+                } else {
+                    exec("php artisan billing:remind --force > /dev/null 2>&1 &");
+                }
+                return back()->with('success', 'Pengiriman pengingat WhatsApp massal telah dijalankan di latar belakang (background). Proses ini akan berjalan otomatis. Silakan cek berkas log Laravel.');
+            }
+
+            if ($type == 'disable') {
+                if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    pclose(popen("cmd /c start /B php artisan billing:disable-unpaid --force", "r"));
+                } else {
+                    exec("php artisan billing:disable-unpaid --force > /dev/null 2>&1 &");
+                }
+                return back()->with('success', 'Proses isolir otomatis pelanggan belum bayar sedang berjalan di latar belakang.');
             }
             
-            if ($type == 'enable' || $type == 'all') {
-                \Illuminate\Support\Facades\Artisan::call('billing:enable-paid', ['--force' => true]);
+            if ($type == 'enable') {
+                if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    pclose(popen("cmd /c start /B php artisan billing:enable-paid --force", "r"));
+                } else {
+                    exec("php artisan billing:enable-paid --force > /dev/null 2>&1 &");
+                }
+                return back()->with('success', 'Proses aktivasi otomatis pelanggan lunas sedang berjalan di latar belakang.');
+            }
+
+            if ($type == 'all') {
+                if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                    pclose(popen("cmd /c start /B php artisan billing:disable-unpaid --force", "r"));
+                    pclose(popen("cmd /c start /B php artisan billing:enable-paid --force", "r"));
+                } else {
+                    exec("php artisan billing:disable-unpaid --force > /dev/null 2>&1 &");
+                    exec("php artisan billing:enable-paid --force > /dev/null 2>&1 &");
+                }
+                return back()->with('success', 'Semua proses sinkronisasi isolir dan aktivasi otomatis sedang berjalan di latar belakang.');
             }
             
-            $output = \Illuminate\Support\Facades\Artisan::output();
-            
-            return back()->with('success', 'Sinkronisasi On/Off otomatis selesai dijalankan. Hasil: ' . nl2br($output));
+            return back()->with('error', 'Parameter tipe sinkronisasi tidak valid.');
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal menjalankan sinkronisasi: ' . $e->getMessage());
         }

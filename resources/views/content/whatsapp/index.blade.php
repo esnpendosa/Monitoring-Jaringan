@@ -266,38 +266,138 @@
             if(method === 'qr') {
                 axios.post("{{ route('whatsapp.session.start') }}", { id: id })
                     .then(res => {
+                        if (res.data.error) {
+                            Swal.fire({ icon: 'error', title: 'Gagal', text: res.data.error });
+                            btnGenerate.disabled = false;
+                            btnGenerate.innerHTML = 'Hubungkan';
+                            return;
+                        }
                         startPolling(id);
-                        btnGenerate.innerHTML = '<i class="bx bx-sync bx-spin me-1"></i> Menunggu Scan...';
+                        resultArea.style.display = 'block';
+                        document.getElementById('qrContainer').style.display = 'block';
+                        btnGenerate.innerHTML = '<i class="bx bx-sync bx-spin me-1"></i> Menunggu Scan QR...';
                     })
                     .catch(err => {
-                        alert('Gagal memulai sesi: ' + (err.response?.data?.error || 'Server Error'));
+                        const msg = err.response?.data?.error || err.message || 'Gagal konek ke server bot. Pastikan bot sudah dijalankan.';
+                        Swal.fire({ icon: 'error', title: 'Gagal Memulai Sesi', text: msg });
                         btnGenerate.disabled = false;
                         btnGenerate.innerHTML = 'Hubungkan';
                     });
             } else {
+                if (!phone) {
+                    Swal.fire({ icon: 'warning', title: 'Nomor Kosong', text: 'Masukkan nomor WhatsApp format 628xxx terlebih dahulu.' });
+                    btnGenerate.disabled = false;
+                    btnGenerate.innerHTML = 'Hubungkan';
+                    return;
+                }
                 axios.post("{{ route('whatsapp.session.pairing') }}", { id: id, phone: phone })
                     .then(res => {
-                        if(res.data.pairingCode) {
+                        if (res.data.pairingCode) {
                             resultArea.style.display = 'block';
                             document.getElementById('pairingContainer').style.display = 'block';
+                            document.getElementById('qrContainer').style.display = 'none';
                             document.getElementById('pairingDisplay').innerText = res.data.pairingCode;
                             btnGenerate.style.display = 'none';
                             startPolling(id);
                         } else {
-                            alert('Gagal: ' + (res.data.error || 'Unknown Error'));
+                            const errMsg = res.data.error || 'Tidak ada pairing code diterima dari server.';
+                            Swal.fire({ icon: 'error', title: 'Gagal Pairing', text: errMsg });
                             btnGenerate.disabled = false;
                             btnGenerate.innerHTML = 'Hubungkan';
                         }
+                    })
+                    .catch(err => {
+                        const msg = err.response?.data?.error || err.message || 'Gagal konek ke server bot. Pastikan bot sudah dijalankan.';
+                        Swal.fire({ icon: 'error', title: 'Gagal Pairing', text: msg });
+                        btnGenerate.disabled = false;
+                        btnGenerate.innerHTML = 'Hubungkan';
                     });
             }
         });
 
+        // Disconnect / Logout Session
         document.querySelectorAll('.stop-session').forEach(btn => {
             btn.addEventListener('click', function() {
-                if(confirm('Yakin ingin memutuskan koneksi perangkat ini?')) {
-                    axios.post("{{ route('whatsapp.session.stop') }}", { id: this.dataset.id })
-                        .then(() => location.reload());
-                }
+                const sessionId = this.dataset.id;
+                Swal.fire({
+                    title: 'Disconnect Perangkat?',
+                    text: "Koneksi WhatsApp pada sesi '" + sessionId + "' akan terputus.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ffab00',
+                    cancelButtonColor: '#8592a3',
+                    confirmButtonText: 'Ya, Putuskan!',
+                    cancelButtonText: 'Batal',
+                    showLoaderOnConfirm: true,
+                    preConfirm: () => {
+                        return axios.post("{{ route('whatsapp.session.stop') }}", { id: sessionId, _token: "{{ csrf_token() }}" })
+                            .then(response => {
+                                if (response.data.error) {
+                                    throw new Error(response.data.error);
+                                }
+                                return response.data;
+                            })
+                            .catch(error => {
+                                Swal.showValidationMessage(
+                                    `Gagal: ${error.response?.data?.error || error.message || 'Server Error'}`
+                                );
+                            });
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Terputus!',
+                            text: 'Sesi WhatsApp berhasil diputuskan.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => location.reload());
+                    }
+                });
+            });
+        });
+
+        // Delete Session Permanently
+        document.querySelectorAll('.delete-session').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const sessionId = this.dataset.id;
+                Swal.fire({
+                    title: 'Hapus Sesi Permanen?',
+                    text: "Semua data autentikasi untuk sesi '" + sessionId + "' akan dihapus dari server.",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff3e1d',
+                    cancelButtonColor: '#8592a3',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal',
+                    showLoaderOnConfirm: true,
+                    preConfirm: () => {
+                        return axios.post("{{ route('whatsapp.session.stop') }}", { id: sessionId, _token: "{{ csrf_token() }}" })
+                            .then(response => {
+                                if (response.data.error) {
+                                    throw new Error(response.data.error);
+                                }
+                                return response.data;
+                            })
+                            .catch(error => {
+                                Swal.showValidationMessage(
+                                    `Gagal: ${error.response?.data?.error || error.message || 'Server Error'}`
+                                );
+                            });
+                    },
+                    allowOutsideClick: () => !Swal.isLoading()
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Terhapus!',
+                            text: 'Sesi WhatsApp berhasil dihapus secara permanen.',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => location.reload());
+                    }
+                });
             });
         });
 

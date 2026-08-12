@@ -11,9 +11,18 @@ use Illuminate\Support\Facades\Auth;
 
 class InventoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $items = InventoryItem::with(['technician', 'user'])->get();
+        $query = InventoryItem::with(['technician', 'user']);
+
+        if ($request->filled('tanggal_mulai')) {
+            $query->whereDate('tanggal_beli', '>=', $request->tanggal_mulai);
+        }
+        if ($request->filled('tanggal_selesai')) {
+            $query->whereDate('tanggal_beli', '<=', $request->tanggal_selesai);
+        }
+
+        $items = $query->get();
         $technicians = Teknisi::all();
         
         // Filter users: Admin (1), Manager (2?), Teknisi (3?) 
@@ -32,24 +41,46 @@ class InventoryController extends Controller
             'kategori' => 'nullable',
             'merk' => 'nullable',
             'serial_number' => 'nullable|unique:inventory_items,serial_number',
-            'gambar_alat' => 'nullable|image|max:2048',
             'stok' => 'nullable|integer|min:0',
+            'harga_beli' => 'nullable|numeric|min:0',
+            'tanggal_beli' => 'nullable|date',
         ]);
+
+        if ($request->hasFile('gambar_alat')) {
+            $file = $request->file('gambar_alat');
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                return back()->withErrors(['gambar_alat' => 'Gambar alat harus berupa gambar (jpg, jpeg, png, gif, webp).'])->withInput();
+            }
+            if ($file->getSize() > 2048 * 1024) {
+                return back()->withErrors(['gambar_alat' => 'Gambar alat tidak boleh lebih dari 2MB.'])->withInput();
+            }
+        }
 
         $data = $request->all();
 
         if ($request->hasFile('gambar_alat')) {
-            $path = $request->file('gambar_alat')->store('inventory', 'public');
-            $data['gambar_alat'] = $path;
+            $file = $request->file('gambar_alat');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            $destinationPath = storage_path('app/public/inventory');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+            $file->move($destinationPath, $filename);
+            $data['gambar_alat'] = 'inventory/' . $filename;
         } elseif ($request->captured_image) {
             // Handle base64 image from camera
             $imageData = $request->captured_image;
             $imageData = str_replace('data:image/png;base64,', '', $imageData);
             $imageData = str_replace('data:image/jpeg;base64,', '', $imageData);
             $imageData = str_replace(' ', '+', $imageData);
-            $imageName = 'inventory/' . uniqid() . '.png';
-            \Illuminate\Support\Facades\Storage::disk('public')->put($imageName, base64_decode($imageData));
-            $data['gambar_alat'] = $imageName;
+            $filename = uniqid() . '.png';
+            $destinationPath = storage_path('app/public/inventory');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+            file_put_contents($destinationPath . '/' . $filename, base64_decode($imageData));
+            $data['gambar_alat'] = 'inventory/' . $filename;
         }
 
         $item = InventoryItem::create($data);
@@ -72,30 +103,58 @@ class InventoryController extends Controller
             'merk' => 'nullable',
             'stok' => 'nullable|integer|min:0',
             'kondisi' => 'required',
-            'gambar_alat' => 'nullable|image|max:2048',
+            'harga_beli' => 'nullable|numeric|min:0',
+            'tanggal_beli' => 'nullable|date',
         ]);
+
+        if ($request->hasFile('gambar_alat')) {
+            $file = $request->file('gambar_alat');
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                return back()->withErrors(['gambar_alat' => 'Gambar alat harus berupa gambar (jpg, jpeg, png, gif, webp).'])->withInput();
+            }
+            if ($file->getSize() > 2048 * 1024) {
+                return back()->withErrors(['gambar_alat' => 'Gambar alat tidak boleh lebih dari 2MB.'])->withInput();
+            }
+        }
 
         $data = $request->all();
 
         if ($request->hasFile('gambar_alat')) {
             // Delete old image if exists
             if ($inventory->gambar_alat) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($inventory->gambar_alat);
+                $oldPath = storage_path('app/public/' . $inventory->gambar_alat);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
-            $path = $request->file('gambar_alat')->store('inventory', 'public');
-            $data['gambar_alat'] = $path;
+            $file = $request->file('gambar_alat');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            $destinationPath = storage_path('app/public/inventory');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+            $file->move($destinationPath, $filename);
+            $data['gambar_alat'] = 'inventory/' . $filename;
         } elseif ($request->captured_image) {
             // Delete old image
             if ($inventory->gambar_alat) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($inventory->gambar_alat);
+                $oldPath = storage_path('app/public/' . $inventory->gambar_alat);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
             $imageData = $request->captured_image;
             $imageData = str_replace('data:image/png;base64,', '', $imageData);
             $imageData = str_replace('data:image/jpeg;base64,', '', $imageData);
             $imageData = str_replace(' ', '+', $imageData);
-            $imageName = 'inventory/' . uniqid() . '.png';
-            \Illuminate\Support\Facades\Storage::disk('public')->put($imageName, base64_decode($imageData));
-            $data['gambar_alat'] = $imageName;
+            $filename = uniqid() . '.png';
+            $destinationPath = storage_path('app/public/inventory');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+            file_put_contents($destinationPath . '/' . $filename, base64_decode($imageData));
+            $data['gambar_alat'] = 'inventory/' . $filename;
         }
 
         $inventory->update($data);

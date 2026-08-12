@@ -171,21 +171,22 @@
                     <div class="card-body">
                         <div class="card-title d-flex align-items-start justify-content-between mb-4">
                             <div class="avatar flex-shrink-0">
-                                <img src="{{ asset('assets/img/icons/unicons/paypal.png') }}" alt="paypal" class="rounded" />
+                                <span class="avatar-initial rounded bg-label-primary p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                                    <i class="bx bx-wrench text-primary fs-4"></i>
+                                </span>
                             </div>
                             <div class="dropdown">
                                 <button class="btn p-0" type="button" id="cardOpt4" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     <i class="icon-base bx bx-dots-vertical-rounded text-body-secondary"></i>
                                 </button>
                                 <div class="dropdown-menu dropdown-menu-end" aria-labelledby="cardOpt4">
-                                    <a class="dropdown-item" href="javascript:void(0);">View More</a>
-                                    <a class="dropdown-item" href="javascript:void(0);">Delete</a>
+                                    <a class="dropdown-item" href="{{ route('inventory.index') }}">Lihat Inventaris</a>
                                 </div>
                             </div>
                         </div>
-                        <p class="mb-1">Payments</p>
-                        <h4 class="card-title mb-3">$2,456</h4>
-                        <small class="text-danger fw-medium"><i class="icon-base bx bx-down-arrow-alt"></i> -14.82%</small>
+                        <p class="mb-1">Aset Alat & Peralatan</p>
+                        <h4 class="card-title mb-2 text-wrap" style="font-size: 1.1rem;">Rp {{ number_format($totalInventoryValue, 0, ',', '.') }}</h4>
+                        <small class="text-success fw-medium"><i class="bx bx-package"></i> {{ $totalInventoryItems }} Jenis Alat</small>
                     </div>
                 </div>
             </div>

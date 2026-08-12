@@ -7,12 +7,20 @@
 
 <div class="card">
   <div class="card-body">
-    <form action="{{ route('pelanggan.store') }}" method="POST">
+    <form action="{{ route('pelanggan.store') }}" method="POST" enctype="multipart/form-data">
       @csrf
       <div class="row">
         <div class="col-md-6 mb-3">
           <label class="form-label">Kode Pelanggan</label>
-          <input type="text" name="kode_pelanggan" class="form-control" placeholder="PEL001" required />
+          <div class="input-group">
+            <input type="text" name="kode_pelanggan" id="kode_pelanggan" class="form-control" placeholder="PEL001" required />
+            <button class="btn btn-outline-secondary" type="button" id="btn-suggest-code" title="Ambil Kode Urut Berikutnya">
+              <i class="bx bx-refresh me-1"></i> Auto
+            </button>
+          </div>
+          <div id="code-suggestion-area" class="mt-1" style="display: none;">
+            <span class="badge bg-label-success" style="cursor: pointer; font-size: 0.85rem;" id="code-suggestion-text"></span>
+          </div>
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Nama Pelanggan</label>
@@ -30,6 +38,11 @@
         <div class="col-md-6 mb-3">
           <label class="form-label">Alamat</label>
           <textarea name="alamat" class="form-control" required></textarea>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Foto Rumah</label>
+          <input type="file" name="foto_rumah" class="form-control" accept="image/*" />
+          <small class="text-muted">Opsional, upload foto depan rumah.</small>
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Latitude</label>
@@ -107,6 +120,19 @@
             </select>
             <small class="text-muted">Tagihan otomatis dibuat setiap bulan pada tanggal ini.</small>
         </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label">Tanggal Pasang (PSB)</label>
+            <input type="date" name="tanggal_pasang" class="form-control" value="{{ date('Y-m-d') }}" />
+            <small class="text-muted">Tanggal pemasangan internet baru.</small>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label class="form-label d-block">Opsi Bonus Gratis Pemasangan</label>
+            <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" name="gratis_pemasangan" id="gratis_pemasangan" value="1">
+                <label class="form-check-label" for="gratis_pemasangan">Aktifkan Bonus Gratis Layanan 2 Bulan Pertama</label>
+            </div>
+            <small class="text-muted">Jika diaktifkan, 2 bulan pertama gratis (Jika pasang &lt; tgl 27, gratis terhitung bulan ini. Jika &gt;= tgl 27, gratis mulai bulan depan).</small>
+        </div>
       </div>
       <button type="submit" class="btn btn-primary">Simpan</button>
     </form>
@@ -117,6 +143,71 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Auto-generation & Suggestion Kode Pelanggan logic
+        const kodeInput = document.getElementById('kode_pelanggan');
+        const suggestBtn = document.getElementById('btn-suggest-code');
+        const suggestionArea = document.getElementById('code-suggestion-area');
+        const suggestionText = document.getElementById('code-suggestion-text');
+
+        function fetchNextCode(prefix = '') {
+            fetch(`/pelanggan/get-next-code?prefix=${prefix}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.next_code) {
+                        if (!prefix) {
+                            // Pre-fill on initial page load
+                            kodeInput.value = data.next_code;
+                        } else {
+                            // Show suggestion below input
+                            suggestionText.innerHTML = `Gunakan kode urut berikutnya: <strong>${data.next_code}</strong> <i class="bx bx-check-circle ms-1"></i>`;
+                            suggestionArea.style.display = 'block';
+                            suggestionText.onclick = function() {
+                                kodeInput.value = data.next_code;
+                                suggestionArea.style.display = 'none';
+                            };
+                        }
+                    }
+                })
+                .catch(err => console.error('Error fetching next code:', err));
+        }
+
+        // Fetch initial next code based on last added customer
+        fetchNextCode();
+
+        // Manual refresh/suggest click
+        suggestBtn.addEventListener('click', function() {
+            const val = kodeInput.value.trim();
+            const match = val.match(/^([a-zA-Z]+)/);
+            const prefix = match ? match[1] : '';
+            fetchNextCode(prefix);
+        });
+
+        // Dynamic typing check
+        let typingTimer;
+        kodeInput.addEventListener('input', function() {
+            clearTimeout(typingTimer);
+            suggestionArea.style.display = 'none';
+            const val = this.value.trim();
+            const match = val.match(/^([a-zA-Z]+)/);
+            if (match) {
+                const prefix = match[1];
+                typingTimer = setTimeout(() => {
+                    fetch(`/pelanggan/get-next-code?prefix=${prefix}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.next_code && data.next_code !== val) {
+                                suggestionText.innerHTML = `Gunakan kode urut berikutnya: <strong>${data.next_code}</strong> <i class="bx bx-check-circle ms-1"></i>`;
+                                suggestionArea.style.display = 'block';
+                                suggestionText.onclick = function() {
+                                    kodeInput.value = data.next_code;
+                                    suggestionArea.style.display = 'none';
+                                };
+                            }
+                        });
+                }, 500);
+            }
+        });
+
         var initialLat = {{ $lat ?? -7.1207 }};
         var initialLng = {{ $lng ?? 112.5959 }};
         var map = L.map('map').setView([initialLat, initialLng], 15);

@@ -105,6 +105,7 @@ class PublicRegistrationController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'paket' => 'required|string',
+            'foto_rumah' => 'nullable|file|max:5120',
         ]);
 
         // Generate unique REG code
@@ -114,6 +115,24 @@ class PublicRegistrationController extends Controller
         }
 
         $harga = $this->guessPrice($validated['paket']);
+
+        $fotoPath = null;
+        if ($request->hasFile('foto_rumah')) {
+            $file = $request->file('foto_rumah');
+            $extension = strtolower($file->getClientOriginalExtension());
+            $allowedExtensions = ['jpeg', 'png', 'jpg', 'gif'];
+            if (in_array($extension, $allowedExtensions)) {
+                $filename = time() . '_' . uniqid() . '.' . $extension;
+                $targetDir = storage_path('app/public/foto_rumah');
+                if (!file_exists($targetDir)) {
+                    @mkdir($targetDir, 0755, true);
+                    @chmod($targetDir, 0755);
+                }
+                $file->move($targetDir, $filename);
+                @chmod($targetDir . '/' . $filename, 0644);
+                $fotoPath = 'foto_rumah/' . $filename;
+            }
+        }
 
         // Create Pelanggan
         $pelanggan = Pelanggan::create([
@@ -129,6 +148,7 @@ class PublicRegistrationController extends Controller
             'billing_date' => 1,
             'is_active' => 0, // Pending / Non-aktif
             'wa_active' => 1,
+            'foto_rumah' => $fotoPath,
         ]);
 
         // Create disabled User
@@ -176,7 +196,7 @@ class PublicRegistrationController extends Controller
         $pelanggan = Pelanggan::where('kode_pelanggan', $code)->firstOrFail();
 
         // Get admin phone number (cleaned for direct WhatsApp chat API)
-        $adminNum = env('WHATSAPP_ADMIN_NUMBER', '6282187827382');
+        $adminNum = env('WHATSAPP_ADMIN_NUMBER');
         if (str_contains($adminNum, '@')) {
             $adminNum = explode('@', $adminNum)[0];
         }

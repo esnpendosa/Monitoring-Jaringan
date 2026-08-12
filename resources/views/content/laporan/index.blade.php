@@ -11,12 +11,12 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>Laporan Keuangan</span>
+                        <span>Rekap Pembayaran</span>
                         <div class="d-flex align-items-end mt-2">
-                            <h4 class="mb-0 me-2">Tagihan</h4>
+                            <h4 class="mb-0 me-2">Excel View</h4>
                         </div>
-                        <p class="mb-0 mt-2">Lihat rincian pembayaran lunas dan piutang pelanggan.</p>
-                        <a href="{{ route('laporan.tagihan') }}" class="btn btn-sm btn-primary mt-3">Buka Laporan</a>
+                        <p class="mb-0 mt-2">Rekap data pembayaran tunai & transfer ala Excel sheet.</p>
+                        <a href="{{ route('laporan.rekap-pembayaran') }}" class="btn btn-sm btn-primary mt-3">Buka Rekap</a>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-primary">

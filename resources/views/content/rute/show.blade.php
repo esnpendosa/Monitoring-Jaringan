@@ -15,6 +15,11 @@
                 <p><strong>Teknisi:</strong> {{ $rute->teknisi->nama_teknisi }}</p>
                 <p><strong>Tanggal:</strong> {{ $rute->tanggal_kunjungan }}</p>
                 <p><strong>Total Jarak:</strong> {{ number_format($rute->total_jarak_km, 2) }} KM</p>
+                @if($rute->details->isNotEmpty())
+                <a href="https://www.google.com/maps/dir/?api=1&origin={{ $rute->titik_awal_lat }},{{ $rute->titik_awal_lng }}&destination={{ $rute->details->last()->pelanggan->latitude }},{{ $rute->details->last()->pelanggan->longitude }}&waypoints={{ $rute->details->slice(0, -1)->map(function($d) { return $d->pelanggan->latitude . ',' . $d->pelanggan->longitude; })->implode('|') }}" target="_blank" class="btn btn-primary w-100 mb-3 mt-2 text-white">
+                    <i class="bx bx-map-alt me-1"></i> Navigasi Seluruh Rute
+                </a>
+                @endif
                 <hr>
                 <h6>Urutan Kunjungan:</h6>
                 <ul class="list-group">
@@ -33,7 +38,11 @@
                         </div>
                         @if($d->status_kunjungan == 'Pending')
                         <div class="d-flex gap-2">
-                            <a href="https://www.google.com/maps/dir/?api=1&destination={{ $d->pelanggan->latitude }},{{ $d->pelanggan->longitude }}" target="_blank" class="btn btn-sm btn-info">
+                            @php
+                                $originLat = $loop->first ? $rute->titik_awal_lat : $rute->details[$loop->index - 1]->pelanggan->latitude;
+                                $originLng = $loop->first ? $rute->titik_awal_lng : $rute->details[$loop->index - 1]->pelanggan->longitude;
+                            @endphp
+                            <a href="https://www.google.com/maps/dir/?api=1&origin={{ $originLat }},{{ $originLng }}&destination={{ $d->pelanggan->latitude }},{{ $d->pelanggan->longitude }}" target="_blank" class="btn btn-sm btn-info">
                                 <i class="bx bx-navigation"></i> Navigasi
                             </a>
                             <form action="{{ route('rute.detail.status', $d->id_rute_detail) }}" method="POST" class="d-inline">
@@ -42,7 +51,11 @@
                             </form>
                         </div>
                         @else
-                        <a href="https://www.google.com/maps/dir/?api=1&destination={{ $d->pelanggan->latitude }},{{ $d->pelanggan->longitude }}" target="_blank" class="btn btn-sm btn-outline-info">
+                        @php
+                            $originLat = $loop->first ? $rute->titik_awal_lat : $rute->details[$loop->index - 1]->pelanggan->latitude;
+                            $originLng = $loop->first ? $rute->titik_awal_lng : $rute->details[$loop->index - 1]->pelanggan->longitude;
+                        @endphp
+                        <a href="https://www.google.com/maps/dir/?api=1&origin={{ $originLat }},{{ $originLng }}&destination={{ $d->pelanggan->latitude }},{{ $d->pelanggan->longitude }}" target="_blank" class="btn btn-sm btn-outline-info">
                             <i class="bx bx-navigation"></i> Peta
                         </a>
                         @endif
@@ -131,16 +144,18 @@
         // Render Pelanggan
         var details = @json($rute->details->load('pelanggan'));
         details.forEach(function(d) {
-            var p = L.latLng(d.pelanggan.latitude, d.pelanggan.longitude);
-            waypoints.push(p);
-            
-            L.circleMarker([d.pelanggan.latitude, d.pelanggan.longitude], {
-                radius: 8, 
-                fillColor: 'red', 
-                color: '#fff', 
-                weight: 2, 
-                fillOpacity: 1
-            }).addTo(map).bindPopup("<b>" + d.urutan + ". " + d.pelanggan.nama_pelanggan + "</b><br>" + d.pelanggan.alamat);
+            if (d.pelanggan && d.pelanggan.latitude && d.pelanggan.longitude) {
+                var p = L.latLng(d.pelanggan.latitude, d.pelanggan.longitude);
+                waypoints.push(p);
+                
+                L.circleMarker([d.pelanggan.latitude, d.pelanggan.longitude], {
+                    radius: 8, 
+                    fillColor: 'red', 
+                    color: '#fff', 
+                    weight: 2, 
+                    fillOpacity: 1
+                }).addTo(map).bindPopup("<b>" + d.urutan + ". " + d.pelanggan.nama_pelanggan + "</b><br>" + d.pelanggan.alamat);
+            }
         });
 
         // Render ODC & ODP with Animations & Photos
@@ -176,24 +191,54 @@
                 `);
         });
 
+        // Clean waypoints to remove any undefined elements
+        waypoints = waypoints.filter(function(wp) {
+            return wp !== undefined;
+        });
+
+        // Initialize Fallback dashed polyline connecting points
+        var fallbackLine = null;
+        if (waypoints.length > 1) {
+            fallbackLine = L.polyline(waypoints, {
+                color: 'blue',
+                weight: 4,
+                dashArray: '5, 10',
+                opacity: 0.5
+            }).addTo(map);
+        }
+
         // Road-Following Route
         if (waypoints.length > 1) {
-            L.Routing.control({
-                waypoints: waypoints,
-                addWaypoints: false,
-                draggableWaypoints: false,
-                fitSelectedRoutes: true,
-                showAlternatives: false,
-                lineOptions: {
-                    styles: [{color: 'blue', opacity: 0.6, weight: 4}]
-                },
-                createMarker: function() { return null; }
-            }).addTo(map);
+            try {
+                var control = L.Routing.control({
+                    waypoints: waypoints,
+                    router: L.Routing.osrmv1({
+                        serviceUrl: 'https://router.project-osrm.org/route/v1'
+                    }),
+                    addWaypoints: false,
+                    draggableWaypoints: false,
+                    fitSelectedRoutes: true,
+                    showAlternatives: false,
+                    lineOptions: {
+                        styles: [{color: 'blue', opacity: 0.6, weight: 4}]
+                    },
+                    createMarker: function() { return null; }
+                }).addTo(map);
 
-            setTimeout(function() {
-                var container = document.querySelector('.leaflet-routing-container');
-                if (container) container.style.display = 'none';
-            }, 500);
+                control.on('routesfound', function(e) {
+                    // Remove fallback dashed line once actual routing line is drawn
+                    if (fallbackLine) {
+                        map.removeLayer(fallbackLine);
+                    }
+                });
+
+                setTimeout(function() {
+                    var container = document.querySelector('.leaflet-routing-container');
+                    if (container) container.style.display = 'none';
+                }, 500);
+            } catch (err) {
+                console.warn("Leaflet Routing Machine solver failed. Using polyline fallback.", err);
+            }
         }
     });
 </script>

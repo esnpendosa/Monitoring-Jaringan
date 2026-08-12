@@ -57,6 +57,7 @@
           <th>Kode</th>
           <th>Nama</th>
           <th>Alamat</th>
+          <th>Foto Rumah</th>
           <th>Usage (GB)</th>
           <th>Devices</th>
           <th>Paket maks</th>
@@ -72,6 +73,15 @@
           <td><strong>{{ $p->kode_pelanggan }}</strong></td>
           <td>{{ $p->nama_pelanggan }}</td>
           <td>{{ Str::limit($p->alamat, 30) }}</td>
+          <td>
+            @if($p->foto_rumah)
+              <a href="{{ asset('storage/' . $p->foto_rumah) }}" target="_blank" class="btn btn-xs btn-outline-info" title="Lihat Foto Rumah">
+                <i class="bx bx-image-alt"></i>
+              </a>
+            @else
+              <span class="text-muted" style="font-size: 0.75rem;">-</span>
+            @endif
+          </td>
           <td>{{ $p->usage_gb }} GB</td>
           <td>{{ $p->jumlah_device }}</td>
           <td><span class="badge bg-label-primary">{{ $p->paket ?? '-' }}</span></td>
@@ -98,27 +108,56 @@
             <span class="badge {{ $badge }}">{{ $p->prioritas_label ?? 'Low' }}</span>
           </td>
           <td>
-            <div class="dropdown">
-              <button type="button" class="btn p-0 dropdown-toggle hide-arrow" data-bs-toggle="dropdown"><i class="bx bx-dots-vertical-rounded"></i></button>
-                <a class="dropdown-item" href="{{ route('pelanggan.show', $p->id_pelanggan) }}"><i class="bx bx-show-alt me-1"></i> Detail / Statistik</a>
-                <a href="{{ route('pelanggan.card', $p->id_pelanggan) }}" class="dropdown-item" target="_blank">
-                    <i class="bx bx-id-card me-1"></i> Cetak Kartu
-                </a>
-                <a class="dropdown-item" href="{{ route('pelanggan.edit', $p->id_pelanggan) }}"><i class="bx bx-edit-alt me-1"></i> Edit</a>
+            <div class="d-inline-flex gap-1 align-items-center">
+              <a href="{{ route('pelanggan.show', $p->id_pelanggan) }}" class="btn btn-xs btn-outline-info" title="Detail / Statistik">
+                <i class="bx bx-show-alt"></i>
+              </a>
+              <a href="{{ route('pelanggan.edit', $p->id_pelanggan) }}" class="btn btn-xs btn-outline-warning" title="Edit">
+                <i class="bx bx-edit-alt"></i>
+              </a>
+              <!-- Trigger Button for Bootstrap Modal -->
+              <button type="button" class="btn btn-xs btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $p->id_pelanggan }}" title="Hapus Pelanggan">
+                <i class="bx bx-trash"></i>
+              </button>
 
-                <form action="{{ route('pelanggan.toggle-wa', $p->id_pelanggan) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="dropdown-item">
-                        <i class="bx bxl-whatsapp me-1 text-success"></i> {{ $p->wa_active ? 'Matikan WA' : 'Aktifkan WA' }}
-                    </button>
-                </form>
-
-                <form action="{{ route('pelanggan.toggle-status', $p->id_pelanggan) }}" method="POST">
-                    @csrf
-                    <button type="submit" class="dropdown-item">
-                        <i class="bx {{ $p->is_active ? 'bx-power-off' : 'bx-play' }} me-1"></i> {{ $p->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-                    </button>
-                </form>
+              <!-- Premium Center-aligned Delete Modal -->
+              <div class="modal fade" id="deleteModal{{ $p->id_pelanggan }}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title">Konfirmasi</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" style="white-space: normal;">
+                      Apakah Anda yakin ingin menghapus pelanggan <strong>{{ $p->nama_pelanggan }}</strong> beserta seluruh data tagihannya?
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                      <a href="{{ route('pelanggan.destroy-direct', $p->id_pelanggan) }}" class="btn btn-danger">Hapus</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="dropdown d-inline-block">
+                <button type="button" class="btn btn-xs btn-outline-secondary dropdown-toggle hide-arrow" data-bs-toggle="dropdown"><i class="bx bx-dots-vertical-rounded"></i></button>
+                <div class="dropdown-menu">
+                  <a href="{{ route('pelanggan.card', $p->id_pelanggan) }}" class="dropdown-item" target="_blank">
+                      <i class="bx bx-id-card me-1"></i> Cetak Kartu
+                  </a>
+                  <form action="{{ route('pelanggan.toggle-wa', $p->id_pelanggan) }}" method="POST" class="d-inline">
+                      @csrf
+                      <button type="submit" class="dropdown-item">
+                          <i class="bx bxl-whatsapp me-1 text-success"></i> {{ $p->wa_active ? 'Matikan WA' : 'Aktifkan WA' }}
+                      </button>
+                  </form>
+                  <form action="{{ route('pelanggan.toggle-status', $p->id_pelanggan) }}" method="POST" class="d-inline">
+                      @csrf
+                      <button type="submit" class="dropdown-item">
+                          <i class="bx {{ $p->is_active ? 'bx-power-off' : 'bx-play' }} me-1"></i> {{ $p->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                      </button>
+                  </form>
+                </div>
+              </div>
             </div>
           </td>
         </tr>

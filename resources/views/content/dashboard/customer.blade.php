@@ -187,7 +187,7 @@
                                     <p>Multimedia Indonesia</p>
                                 </div>
                             </div>
-                            <span class="badge bg-white text-primary text-uppercase">{{ $pelanggan->mikrotik_type ?? 'WIFI' }}</span>
+
                         </div>
                         <div class="card-body-id">
                             <div class="info-section-id">

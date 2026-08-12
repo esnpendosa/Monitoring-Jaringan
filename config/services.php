@@ -44,4 +44,9 @@ return [
         'is_3ds' => env('MIDTRANS_IS_3DS', true),
     ],
 
+    'whatsapp_bot' => [
+        'secret' => env('BOT_SECRET', 'rozitech-bot-secret-2024'),
+        'port'   => env('BOT_PORT', 3000),
+    ],
+
 ];

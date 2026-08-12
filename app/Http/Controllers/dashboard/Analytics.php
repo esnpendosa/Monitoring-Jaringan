@@ -9,6 +9,9 @@ class Analytics extends Controller
 {
   public function index()
   {
-    return view('content.dashboard.dashboards-analytics');
+    $totalInventoryValue = \App\Models\InventoryItem::sum('harga_beli');
+    $totalInventoryItems = \App\Models\InventoryItem::count();
+
+    return view('content.dashboard.dashboards-analytics', compact('totalInventoryValue', 'totalInventoryItems'));
   }
 }

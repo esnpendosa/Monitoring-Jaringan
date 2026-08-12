@@ -14,7 +14,7 @@ class PelangganController extends Controller
     public function index(Request $request)
     {
         $search = $request->query('search');
-        $query = Pelanggan::latest();
+        $query = Pelanggan::query();
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -24,7 +24,7 @@ class PelangganController extends Controller
             });
         }
 
-        $pelanggan = $query->get();
+        $pelanggan = $query->get()->sortBy('kode_pelanggan', SORT_NATURAL | SORT_FLAG_CASE)->values();
         return view('content.pelanggan.index', compact('pelanggan'));
     }
 
@@ -55,8 +55,31 @@ class PelangganController extends Controller
             'ip_address' => 'nullable|string',
             'billing_date' => 'required|integer|min:1|max:28',
             'wa_active' => 'required|boolean',
+            'foto_rumah' => 'nullable|file|max:5120',
+            'tanggal_pasang' => 'nullable|date',
+            'gratis_pemasangan' => 'nullable|boolean',
         ]);
 
+        $fotoPath = null;
+        if ($request->hasFile('foto_rumah')) {
+            $file = $request->file('foto_rumah');
+            $extension = strtolower($file->getClientOriginalExtension());
+            $allowedExtensions = ['jpeg', 'png', 'jpg', 'gif'];
+            if (in_array($extension, $allowedExtensions)) {
+                $filename = time() . '_' . uniqid() . '.' . $extension;
+                $targetDir = storage_path('app/public/foto_rumah');
+                if (!file_exists($targetDir)) {
+                    @mkdir($targetDir, 0755, true);
+                    @chmod($targetDir, 0755);
+                }
+                $file->move($targetDir, $filename);
+                @chmod($targetDir . '/' . $filename, 0644);
+                $fotoPath = 'foto_rumah/' . $filename;
+            }
+        }
+
+        $validated['foto_rumah'] = $fotoPath;
+        $validated['gratis_pemasangan'] = $request->has('gratis_pemasangan');
         $pelanggan = Pelanggan::create($validated);
 
         // Auto-create User account
@@ -112,8 +135,38 @@ class PelangganController extends Controller
             'is_active' => 'required|boolean',
             'wa_active' => 'required|boolean',
             'billing_date' => 'required|integer|min:1|max:28',
+            'foto_rumah' => 'nullable|file|max:5120',
+            'tanggal_pasang' => 'nullable|date',
+            'gratis_pemasangan' => 'nullable|boolean',
         ]);
 
+        if ($request->hasFile('foto_rumah')) {
+            $file = $request->file('foto_rumah');
+            $extension = strtolower($file->getClientOriginalExtension());
+            $allowedExtensions = ['jpeg', 'png', 'jpg', 'gif'];
+            if (in_array($extension, $allowedExtensions)) {
+                // Delete old photo if it exists
+                if ($pelanggan->foto_rumah) {
+                    $oldPath = storage_path('app/public/' . $pelanggan->foto_rumah);
+                    if (file_exists($oldPath)) {
+                        @unlink($oldPath);
+                    }
+                }
+
+                $filename = time() . '_' . uniqid() . '.' . $extension;
+                $targetDir = storage_path('app/public/foto_rumah');
+                if (!file_exists($targetDir)) {
+                    @mkdir($targetDir, 0755, true);
+                    @chmod($targetDir, 0755);
+                }
+                $file->move($targetDir, $filename);
+                @chmod($targetDir . '/' . $filename, 0644);
+                $validated['foto_rumah'] = 'foto_rumah/' . $filename;
+            }
+        }
+
+        $validated['gratis_pemasangan'] = $request->has('gratis_pemasangan');
+        $validated['is_isolated'] = false;
         $pelanggan->update($validated);
 
         // Sync with User account if email changed
@@ -143,12 +196,54 @@ class PelangganController extends Controller
         return redirect()->route('pelanggan.index')->with('success', 'Pelanggan berhasil dihapus');
     }
 
+    public function destroyDirect(Pelanggan $pelanggan)
+    {
+        $user = auth()->user();
+        if (!$user || !$user->hasPermission('pelanggan_manage')) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        try {
+            \App\Helpers\ActivityLogger::log('Menghapus pelanggan/registrasi: ' . $pelanggan->nama_pelanggan . ' (' . $pelanggan->kode_pelanggan . ')', 'pelanggan');
+            
+            if ($pelanggan->foto_rumah) {
+                $filePath = storage_path('app/public/' . $pelanggan->foto_rumah);
+                if (file_exists($filePath)) {
+                    @unlink($filePath);
+                }
+            }
+            
+            $isReg = str_starts_with($pelanggan->kode_pelanggan, 'REG');
+            
+            $userId = $pelanggan->id_user;
+            $pelanggan->delete();
+            
+            if ($userId) {
+                \App\Models\User::where('id', $userId)->delete();
+            }
+            
+            if ($isReg) {
+                return redirect()->route('pelanggan.registrasi.index')->with('success', 'Pendaftaran berhasil dihapus');
+            }
+            return redirect()->route('pelanggan.index')->with('success', 'Pelanggan berhasil dihapus');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Gagal menghapus pelanggan: ' . $e->getMessage());
+        }
+    }
+
     public function show(Pelanggan $pelanggan)
     {
         // Security check
         $user = auth()->user();
-        if ($user->id_role != 1 && $pelanggan->id_user != $user->id) {
+        if (!$user->hasPermission('pelanggan_manage') && $pelanggan->id_user !== $user->id) {
             abort(403, 'Unauthorized action.');
+        }
+
+        if (request()->query('action') === 'delete') {
+            if (!$user->hasPermission('pelanggan_manage')) {
+                abort(403, 'Unauthorized action.');
+            }
+            return $this->destroyDirect($pelanggan);
         }
 
         $mikrotikData = null;
@@ -284,7 +379,10 @@ class PelangganController extends Controller
     public function toggleStatus(Pelanggan $pelanggan)
     {
         $newStatus = $pelanggan->is_active ? 0 : 1;
-        $pelanggan->update(['is_active' => $newStatus]);
+        $pelanggan->update([
+            'is_active' => $newStatus,
+            'is_isolated' => false
+        ]);
 
         if ($pelanggan->id_router) {
             $mikrotik = new \App\Services\MikrotikService();
@@ -303,7 +401,8 @@ class PelangganController extends Controller
     {
         // Security check
         $user = auth()->user();
-        if ($user->id_role != 1 && $pelanggan->id_user != $user->id) {
+        $isAdminOrManager = ($user->role && in_array($user->role->name, ['Admin', 'Manajer'])) || in_array($user->id_role, [1, 2]);
+        if (!$isAdminOrManager && $pelanggan->id_user != $user->id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -498,5 +597,123 @@ class PelangganController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
+    }
+
+    public function getNextCode(Request $request)
+    {
+        $prefix = strtoupper(trim($request->query('prefix', '')));
+        
+        if (empty($prefix)) {
+            // Find the last created customer (excluding REG% and TRN-% which are temporary/random)
+            $lastPelanggan = Pelanggan::whereRaw("kode_pelanggan NOT REGEXP '^REG[0-9]+$'")
+                ->whereRaw("kode_pelanggan NOT REGEXP '^TRN-'")
+                ->latest('id_pelanggan')
+                ->first();
+                
+            if ($lastPelanggan) {
+                // Extract non-numeric prefix
+                preg_match('/^([a-zA-Z]+)/', $lastPelanggan->kode_pelanggan, $matches);
+                $prefix = isset($matches[1]) ? strtoupper($matches[1]) : 'PEL';
+            } else {
+                $prefix = 'PEL';
+            }
+        }
+        
+        // Find all customer codes starting with $prefix
+        $codes = Pelanggan::where('kode_pelanggan', 'like', $prefix . '%')
+            ->pluck('kode_pelanggan')
+            ->toArray();
+            
+        $maxNum = 0;
+        foreach ($codes as $code) {
+            // Extract the number part after the prefix
+            $numPart = substr($code, strlen($prefix));
+            if (is_numeric($numPart)) {
+                $maxNum = max($maxNum, (int)$numPart);
+            }
+        }
+        
+        $nextNum = $maxNum + 1;
+        $nextCode = $prefix . $nextNum;
+        
+        return response()->json([
+            'prefix' => $prefix,
+            'next_code' => $nextCode,
+            'next_number' => $nextNum
+        ]);
+    }
+
+    public function monitoring()
+    {
+        return view('content.pelanggan.monitoring');
+    }
+
+    public function monitoringData()
+    {
+        // Tampilkan SEMUA pelanggan (aktif maupun nonaktif, ada router maupun tidak)
+        // agar monitoring bisa memantau seluruh 400+ data pelanggan
+        $pelanggans = Pelanggan::orderBy('kode_pelanggan')
+            ->get()
+            ->map(function ($p) {
+                return [
+                    'id_pelanggan'       => $p->id_pelanggan,
+                    'kode_pelanggan'     => $p->kode_pelanggan,
+                    'nama_pelanggan'     => $p->nama_pelanggan,
+                    'ip_address'         => $p->ip_address ?: '-',
+                    'last_online_status' => (bool)$p->last_online_status,
+                    'last_ping_at'       => $p->last_ping_at
+                                            ? \Carbon\Carbon::parse($p->last_ping_at)->diffForHumans()
+                                            : 'Belum dipindai',
+                    'mikrotik_username'  => $p->mikrotik_username ?: '-',
+                    'mikrotik_type'      => strtoupper($p->mikrotik_type ?: '-'),
+                    'is_active'          => (bool)$p->is_active,
+                    'paket'              => $p->paket ?: '-',
+                    'harga_layanan'      => $p->harga_layanan,
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'total'   => $pelanggans->count(),
+            'data'    => $pelanggans,
+        ]);
+    }
+
+    public function pingPelanggan(Pelanggan $pelanggan)
+    {
+        $router = $pelanggan->router;
+        $currentIp = null;
+        
+        if ($pelanggan->id_router && $router && $pelanggan->mikrotik_username) {
+            $mikrotik = app(MikrotikService::class);
+            $currentIp = $mikrotik->getPelangganActiveIp($router, $pelanggan->mikrotik_username, $pelanggan->mikrotik_type);
+            if ($currentIp === 'ROUTER_OFFLINE') {
+                $currentIp = null;
+            }
+        }
+
+        if (!$currentIp && $pelanggan->ip_address) {
+            $host = $pelanggan->ip_address;
+            $pingCommand = (PHP_OS_FAMILY === 'Windows') ? "ping -n 1 -w 1000 $host" : "ping -c 1 -W 1 $host";
+            exec($pingCommand, $output, $resultCode);
+            if ($resultCode === 0) {
+                $currentIp = $host;
+            }
+        }
+
+        $isOnline = $currentIp ? true : false;
+
+        $pelanggan->update([
+            'ip_address' => $currentIp ?: $pelanggan->ip_address,
+            'last_online_status' => $isOnline,
+            'last_ping_at' => now()
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'is_online' => $isOnline,
+            'ip_address' => $pelanggan->ip_address ?: '-',
+            'last_ping_at' => $pelanggan->last_ping_at ? \Carbon\Carbon::parse($pelanggan->last_ping_at)->diffForHumans() : '-'
+        ]);
     }
 }

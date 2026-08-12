@@ -102,11 +102,11 @@ class PaymentController extends Controller
                 if ($fraud == 'challenge') {
                     $tagihan->update(['status' => 'unpaid']);
                 } else {
-                    $this->markAsPaid($tagihan);
+                    $this->markAsPaid($tagihan, 'Midtrans (' . $type . ')');
                 }
             }
         } else if ($transaction == 'settlement') {
-            $this->markAsPaid($tagihan);
+            $this->markAsPaid($tagihan, 'Midtrans (' . $type . ')');
         } else if ($transaction == 'pending') {
             $tagihan->update(['status' => 'unpaid']);
         } else if ($transaction == 'deny' || $transaction == 'expire' || $transaction == 'cancel') {
@@ -130,30 +130,47 @@ class PaymentController extends Controller
         return view('content.payment.quick_pay', compact('pelanggan', 'tagihan'));
     }
 
-    protected function markAsPaid(Tagihan $tagihan)
+    protected function markAsPaid(Tagihan $tagihan, $paymentType = 'Midtrans')
     {
         $tagihan->update([
             'status' => 'paid',
-            'paid_at' => now()
+            'paid_at' => now(),
+            'metode_pembayaran' => $paymentType
         ]);
+
+        // Log the activity
+        try {
+            \App\Helpers\ActivityLogger::log(
+                'Sistem (Midtrans) berhasil memverifikasi otomatis tagihan #' . $tagihan->id_tagihan . ' (' . ($tagihan->pelanggan ? $tagihan->pelanggan->nama_pelanggan : 'Umum') . ') sebesar Rp ' . number_format($tagihan->jumlah, 0, ',', '.') . ' via ' . $paymentType,
+                'tagihan',
+                'Midtrans Gateway',
+                'System'
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal mencatat log aktivitas verifikasi otomatis Midtrans: " . $e->getMessage());
+        }
 
         $pelanggan = $tagihan->pelanggan;
         if ($pelanggan && $pelanggan->id_router) {
             // Re-enable Mikrotik Service
             $success = $this->mikrotikService->setSecretStatus($pelanggan->router, $pelanggan->mikrotik_username ?: $pelanggan->kode_pelanggan, $pelanggan->mikrotik_type, false, $pelanggan->ip_address);
             if ($success) {
-                $pelanggan->update(['is_active' => true]);
+                $pelanggan->update(['is_active' => true, 'is_isolated' => false]);
             }
         }
 
-        // Kirim Notifikasi WA (Proaktif untuk Payment Gateway)
+        // Kirim Notifikasi WA setelah response (non-blocking)
+        // Midtrans butuh response cepat, jangan block dengan pengiriman WA
         if ($pelanggan && $pelanggan->no_wa) {
-            try {
-                $waClient = new \App\Services\WhatsappClient();
-                $waClient->sendReceipt($tagihan);
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Gagal kirim nota bayar Midtrans: ' . $e->getMessage());
-            }
+            $tid = $tagihan->id_tagihan;
+            app()->terminating(function () use ($tid) {
+                try {
+                    $t = \App\Models\Tagihan::find($tid);
+                    if ($t) (new \App\Services\WhatsappClient())->sendReceipt($t);
+                } catch (\Exception $e) {
+                    \Illuminate\Support\Facades\Log::error('Gagal kirim nota bayar Midtrans: ' . $e->getMessage());
+                }
+            });
         }
     }
 }

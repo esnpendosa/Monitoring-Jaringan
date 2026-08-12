@@ -25,6 +25,13 @@
       "permission": "pelanggan_manage"
     },
     {
+      "url": "/pelanggan/monitoring",
+      "name": "Monitoring WiFi",
+      "icon": "menu-icon icon-base bx bx-wifi",
+      "slug": "pelanggan.monitoring",
+      "permission": "pelanggan_manage"
+    },
+    {
       "url": "/registrasi",
       "name": "Registrasi Baru",
       "icon": "menu-icon icon-base bx bx-user-plus",
@@ -54,6 +61,13 @@
       "name": "Klasifikasi Prioritas",
       "icon": "menu-icon icon-base bx bx-brain",
       "slug": "knn",
+      "permission": "knn_process"
+    },
+    {
+      "url": "/knn/report",
+      "name": "Laporan KNN",
+      "icon": "menu-icon icon-base bx bx-file",
+      "slug": "knn.report",
       "permission": "knn_process"
     },
     {
@@ -112,6 +126,31 @@
       "permission": "billing_view"
     },
     {
+      "url": "/upgrade-paket",
+      "name": "Upgrade Paket WiFi",
+      "icon": "menu-icon icon-base bx bx-chevrons-up",
+      "slug": "upgrade-paket"
+    },
+    {
+      "url": "/tutorial",
+      "name": "Tutorial",
+      "icon": "menu-icon icon-base bx bx-book-open",
+      "slug": "tutorial"
+    },
+    {
+      "url": "/modem",
+      "name": "Modem",
+      "icon": "menu-icon icon-base bx bx-chip",
+      "slug": "modem"
+    },
+    {
+      "url": "/keuangan",
+      "name": "Keuangan & PSB",
+      "icon": "menu-icon icon-base bx bx-calculator",
+      "slug": "keuangan",
+      "permission": "user_manage"
+    },
+    {
       "url": "/settings/payment",
       "name": "Set Pembayaran",
       "icon": "menu-icon icon-base bx bx-cog",
@@ -122,10 +161,40 @@
       "menuHeader": "Sistem"
     },
     {
+      "name": "Absensi Pegawai",
+      "icon": "menu-icon icon-base bx bx-fingerprint",
+      "slug": "absensi",
+      "submenu": [
+        {
+          "url": "/absensi/today",
+          "name": "Absensi Hari Ini",
+          "slug": "absensi-today"
+        },
+        {
+          "url": "/absensi",
+          "name": "Rekap Kehadiran",
+          "slug": "absensi-recap"
+        },
+        {
+          "url": "/absensi/settings",
+          "name": "Pengaturan Alat",
+          "slug": "absensi-settings",
+          "permission": "user_manage"
+        }
+      ]
+    },
+    {
       "url": "/users",
       "name": "Manajemen Pengguna",
       "icon": "menu-icon icon-base bx bx-group",
       "slug": "users",
+      "permission": "user_manage"
+    },
+    {
+      "url": "/admin/intern-tasks",
+      "name": "Task List Magang",
+      "icon": "menu-icon icon-base bx bx-task",
+      "slug": "admin-intern-tasks",
       "permission": "user_manage"
     },
     {
@@ -168,9 +237,9 @@
           "slug": "laporan.index"
         },
         {
-          "url": "/laporan/tagihan",
-          "name": "Laporan Keuangan",
-          "slug": "laporan.tagihan"
+          "url": "/laporan/rekap-pembayaran",
+          "name": "Rekap Pembayaran (Excel)",
+          "slug": "laporan.rekap-pembayaran"
         }
       ]
     }

@@ -40,6 +40,18 @@ class WhatsappController extends Controller
         $phoneNumber = explode('@', $sender)[0];
         $cleanPhone = substr($phoneNumber, -10);
 
+        // Check if customer is manually deactivated
+        $cleanNumForCheck = preg_replace('/[^0-9]/', '', $phoneNumber);
+        if (!empty($cleanNumForCheck)) {
+            $customer = \App\Models\Pelanggan::where('no_wa', 'like', '%' . $cleanNumForCheck . '%')
+                ->orWhere('no_wa', 'like', '%' . substr($cleanNumForCheck, 2) . '%')
+                ->first();
+            if ($customer && !$customer->is_active && !$customer->is_isolated) {
+                Log::info("WhatsappController Webhook: Ignoring message from manually deactivated customer: {$customer->nama_pelanggan} ({$phoneNumber})");
+                return response()->json(['status' => 'ignored_manually_deactivated_customer']);
+            }
+        }
+
         // Auto-update BotResponse ID 6 response text to include the new instruction
         $laporResponse = \App\Models\BotResponse::find(6);
         if ($laporResponse && !str_contains($laporResponse->response, 'TROUBLE KODE_PELANGGAN')) {
@@ -540,7 +552,6 @@ class WhatsappController extends Controller
         if ($lastCheckedId) $tagihan = Tagihan::where('id_pelanggan', $lastCheckedId)->whereIn('status', ['unpaid', 'belum_bayar'])->latest()->first();
 
         if (!$tagihan) {
-            // Jika tidak ada tagihan, cek apakah gambar ini sepertinya struk pembayaran (via OCR)
             $ocrText = strtolower($request->ocrText ?? '');
             $receiptKeywords = ['transfer', 'jumlah', 'rp', 'berhasil', 'sukses', 'bank', 'bri', 'dana'];
             $looksLikeReceipt = false;
@@ -551,7 +562,6 @@ class WhatsappController extends Controller
                 }
             }
 
-            // Jika bukan struk dan tidak sedang cek tagihan, abaikan saja (jangan balas)
             if (!$looksLikeReceipt) {
                 return response()->json(['status' => 'ignored_not_a_receipt']);
             }
@@ -565,26 +575,102 @@ class WhatsappController extends Controller
         file_put_contents(storage_path('app/public/bukti_bayar/' . $fileName), $imageData);
         $tagihan->update(['bukti_bayar' => 'bukti_bayar/' . $fileName]);
 
-        // OCR logic improved
+        // ──────────────────────────────────────────────────────────────────────
+        // OCR: Deteksi apakah gambar adalah STRUK TRANSFER BANK / E-WALLET
+        // ──────────────────────────────────────────────────────────────────────
         $ocrText = strtolower($request->ocrText ?? '');
         $cleanOcr = preg_replace('/[^0-9]/', '', $ocrText);
-        $targetAmount = (string)((int)$tagihan->jumlah);
-        
-        // Keywords yang menandakan pembayaran berhasil
-        $successKeywords = ['berhasil', 'sukses', 'lunas', 'selesai', 'total bayar', 'transfer', 'smartpay', 'dana'];
-        $hasSuccessKeyword = false;
-        foreach ($successKeywords as $kw) {
+        $targetAmount = (int)$tagihan->jumlah;
+
+        // Keyword khas struk transfer bank (tidak umum muncul di chat WA biasa)
+        $bankReceiptKeywords = [
+            'rekening tujuan', 'no rekening', 'rekening sumber', 'no rek',
+            'no transaksi', 'id transaksi', 'ref', 'referensi', 'kode transaksi',
+            'tanggal transaksi', 'tgl transaksi', 'waktu transaksi',
+            'transfer berhasil', 'transaksi berhasil', 'pembayaran berhasil',
+            'berhasil', 'debit', 'kredit', 'm-transfer', 'sumber akun',
+        ];
+
+        // Nama bank & e-wallet resmi Indonesia (LENGKAP termasuk Jago, Neobank, dll)
+        $bankNames = [
+            // Bank Konvensional
+            'bri', 'bca', 'mandiri', 'bni', 'bsi', 'cimb', 'btn', 'danamon',
+            'permata', 'maybank', 'ocbc', 'panin', 'mega', 'bukopin', 'btpn',
+            // Neobank / Digital Bank
+            'jago', 'jenius', 'blu', 'motion', 'seabank', 'superbank',
+            'neo bank', 'neobank', 'allo bank', 'allobank',
+            // E-Wallet
+            'dana', 'ovo', 'gopay', 'shopeepay', 'linkaja', 'sakuku',
+            'livin', 'brimo', 'flip', 'mybukalapak',
+        ];
+
+        $receiptKeywordCount = 0;
+        foreach ($bankReceiptKeywords as $kw) {
             if (str_contains($ocrText, $kw)) {
-                $hasSuccessKeyword = true;
+                $receiptKeywordCount++;
+            }
+        }
+
+        $hasBankName = false;
+        $detectedBank = null;
+        foreach ($bankNames as $bank) {
+            if (str_contains($ocrText, $bank)) {
+                $hasBankName = true;
+                $detectedBank = strtoupper($bank);
                 break;
             }
         }
 
-        // Cek apakah nominal ada di dalam teks OCR
-        $amountMatched = str_contains($cleanOcr, $targetAmount);
+        // ── Pengecekan Nominal ──────────────────────────────────────────────
+        // Skenario 1 (Normal): Pelanggan transfer TEPAT sesuai tagihan
+        //   → cek apakah nominal tagihan ada di teks OCR
+        // Skenario 2 (Gabungan): Satu transfer untuk beberapa pelanggan
+        //   → transfer amount bisa lebih besar dari tagihan (mis: 200.000 untuk BA4+BC39)
+        //   → cek apakah ADA angka di struk yang >= nominal tagihan
+        // ──────────────────────────────────────────────────────────────────────
+        $amountMatched = false;
+        if ($targetAmount >= 1000) {
+            $targetStr = (string)$targetAmount;
 
-        if ($amountMatched && $hasSuccessKeyword) {
-            $tagihan->update(['status' => 'paid', 'paid_at' => now(), 'metode_pembayaran' => 'otomatis']);
+            // Skenario 1: nominal exact match
+            if (str_contains($cleanOcr, $targetStr)) {
+                $amountMatched = true;
+            } else {
+                // Skenario 2: cari semua angka >= 4 digit di struk,
+                // lolos jika ada yang >= tagihan (berarti transfer mencakup tagihan ini)
+                preg_match_all('/\d{4,}/', $cleanOcr, $numMatches);
+                foreach ($numMatches[0] as $num) {
+                    if ((int)$num >= $targetAmount) {
+                        $amountMatched = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        $isValidReceipt = $amountMatched && $hasBankName && ($receiptKeywordCount >= 1);
+
+        \Log::info("OCR Verifikasi Tagihan #{$tagihan->id_tagihan}: amountMatched=" . ($amountMatched ? 'true' : 'false') .
+                   ", hasBankName=" . ($hasBankName ? 'true' : 'false') .
+                   ", receiptKeywordCount=$receiptKeywordCount" .
+                   ", targetAmount=$targetAmount" .
+                   ", ocrLength=" . strlen($ocrText));
+
+        if ($isValidReceipt) {
+            $paymentMethod = 'Transfer ' . ($detectedBank ?: 'Bank');
+            $tagihan->update(['status' => 'paid', 'paid_at' => now(), 'metode_pembayaran' => $paymentMethod]);
+            
+            // Log the activity
+            try {
+                \App\Helpers\ActivityLogger::log(
+                    'Sistem (WhatsApp Bot) berhasil memverifikasi otomatis tagihan #' . $tagihan->id_tagihan . ' (' . ($tagihan->pelanggan ? $tagihan->pelanggan->nama_pelanggan : 'Umum') . ') sebesar Rp ' . number_format($tagihan->jumlah, 0, ',', '.'),
+                    'tagihan',
+                    'WhatsApp Bot',
+                    'System'
+                );
+            } catch (\Exception $e) {
+                \Log::error("Gagal mencatat log aktivitas verifikasi otomatis WhatsApp: " . $e->getMessage());
+            }
             
             // Auto Re-Enable Layanan (Un-Isolir)
             $pelanggan = $tagihan->pelanggan;
@@ -601,13 +687,24 @@ class WhatsappController extends Controller
                 }
             }
 
-            try {
-                $waClient = new \App\Services\WhatsappClient();
-                $waClient->sendReceipt($tagihan);
-            } catch (\Exception $e) {
-                \Log::error("Failed to send receipt: " . $e->getMessage());
-            }
-            return response()->json(['reply' => "✅ VERIFIKASI OTOMATIS BERHASIL!\n\nTerima kasih, pembayaran sebesar Rp " . number_format($tagihan->jumlah, 0, ',', '.') . " telah kami terima. Layanan Anda kini sudah aktif kembali.\n\nNota digital telah dikirimkan ke nomor ini."]);
+            // Simpan tagihan ID untuk dipakai di closure (hindari capture object besar)
+            $tagihanId = $tagihan->id_tagihan;
+
+            // Kirim nota PDF SETELAH response dikirim ke bot agar tidak terjadi
+            // circular timeout (bot nunggu Laravel → Laravel nunggu bot → deadlock)
+            app()->terminating(function () use ($tagihanId) {
+                try {
+                    $t = \App\Models\Tagihan::find($tagihanId);
+                    if ($t) {
+                        $waClient = new \App\Services\WhatsappClient();
+                        $waClient->sendReceipt($t);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("Failed to send receipt (afterResponse): " . $e->getMessage());
+                }
+            });
+
+            return response()->json(['reply' => "✅ VERIFIKASI OTOMATIS BERHASIL!\n\nTerima kasih, pembayaran sebesar Rp " . number_format($tagihan->jumlah, 0, ',', '.') . " telah kami terima. Layanan Anda kini sudah aktif kembali.\n\nNota digital sedang dikirim ke nomor ini."]);
         }
 
         return response()->json(['reply' => "⚠️ Bukti transfer telah kami terima. Namun, sistem kami perlu melakukan pengecekan manual untuk memastikan validitasnya. Mohon tunggu sebentar nggih Kak, admin kami akan segera mengonfirmasi."]);
@@ -615,12 +712,14 @@ class WhatsappController extends Controller
 
     private function handleCekTagihanPlaceholder($finalReply, $message, $remoteJid)
     {
-        $customerCode = trim(str_ireplace('cek tagihan', '', $message));
+        // Ekstrak kode pelanggan, lalu uppercase agar cocok dengan DB (A75, bukan a75)
+        $customerCode = strtoupper(trim(str_ireplace('cek tagihan', '', $message)));
         $customer = null;
 
         if ($customerCode) {
-            $customer = \App\Models\Pelanggan::where('kode_pelanggan', $customerCode)
-                ->orWhere('mikrotik_username', $customerCode)
+            // Gunakan UPPER() di DB agar pencarian case-insensitive (A75 = a75 = A75)
+            $customer = \App\Models\Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$customerCode])
+                ->orWhereRaw('UPPER(mikrotik_username) = ?', [$customerCode])
                 ->first();
         } else {
             // Bersihkan nomor WA pengirim untuk pencarian otomatis
@@ -755,7 +854,7 @@ class WhatsappController extends Controller
         $odpCount = OdcOdp::where('tipe', 'ODP')->count();
         $networkSummary = "DATA JARINGAN REALTIME:\n- Total Pelanggan: $pelangganCount\n- Total ODC: $odcCount\n- Total ODP: $odpCount\n\nJika pelanggan tanya lokasi, sarankan ketik 'lok [nama]' atau 'lokasi [nama]'.";
 
-        $adminNum = env('WHATSAPP_ADMIN_NUMBER', '6282187827382');
+        $adminNum = env('WHATSAPP_ADMIN_NUMBER');
         $systemInstruction = "Anda adalah R-Care, Customer Service AI resmi dari Rozitech (https://rozitech.co.id).
         Tugas Anda adalah melayani pelanggan Rozitech Network (Layanan Internet/WiFi).
 
@@ -915,7 +1014,7 @@ class WhatsappController extends Controller
         $incomingMsg = trim($message);
         if (preg_match('/^!train\s+/i', $incomingMsg)) {
             // DYNAMIC ADMIN CHECK
-            $adminNumbers = explode(',', env('WHATSAPP_ADMIN_NUMBER', '6282187827382'));
+            $adminNumbers = explode(',', env('WHATSAPP_ADMIN_NUMBER'));
             $adminIds = explode(',', env('WHATSAPP_ADMIN_IDS', '117849758691352,251749826822171'));
             $adminNames = explode(',', strtolower(env('WHATSAPP_ADMIN_NAMES', 'rozitech,kang digital,admin')));
             

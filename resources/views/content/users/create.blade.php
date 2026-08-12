@@ -31,6 +31,14 @@
                             @endforeach
                         </select>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">PIN Sidik Jari (Fingerspot / Solution)</label>
+                        <input type="text" name="pin_fingerspot" class="form-control" placeholder="Contoh: 12" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">No. WhatsApp / HP</label>
+                        <input type="text" name="no_hp" class="form-control" placeholder="Contoh: 6281234567890" />
+                    </div>
 
                     <div class="mb-3" id="pelanggan_link_group" style="display: none;">
                         <label class="form-label text-primary fw-bold">Hubungkan ke Data Pelanggan</label>

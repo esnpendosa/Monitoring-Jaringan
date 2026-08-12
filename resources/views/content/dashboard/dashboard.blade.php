@@ -140,7 +140,7 @@
 </div>
 
 <div class="row">
-  <div class="col-lg-4 col-md-6 mb-4">
+  <div class="col-lg-3 col-md-6 col-6 mb-4">
     <div class="card bg-label-success">
       <div class="card-body">
         <div class="card-title d-flex align-items-start justify-content-between">
@@ -153,7 +153,7 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 mb-4">
+  <div class="col-lg-3 col-md-6 col-6 mb-4">
     <div class="card bg-label-danger">
       <div class="card-body">
         <div class="card-title d-flex align-items-start justify-content-between">
@@ -166,16 +166,67 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-4 col-md-6 mb-4">
+  <div class="col-lg-3 col-md-6 col-6 mb-4">
+    <div class="card bg-label-warning">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <i class="icon-base bx bx-trending-down text-warning" style="font-size: 2rem;"></i>
+          </div>
+        </div>
+        <span class="fw-semibold d-block mb-1">Total Pengeluaran</span>
+        <h3 class="card-title mb-2 text-warning">Rp {{ number_format($stats['total_pengeluaran'], 0, ',', '.') }}</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-3 col-md-6 col-6 mb-4">
     <div class="card bg-label-primary">
       <div class="card-body">
         <div class="card-title d-flex align-items-start justify-content-between">
           <div class="avatar flex-shrink-0">
-            <i class="icon-base bx bx-bar-chart-alt-2 text-primary" style="font-size: 2rem;"></i>
+            <i class="icon-base bx bx-plus-circle text-primary" style="font-size: 2rem;"></i>
           </div>
         </div>
-        <span class="fw-semibold d-block mb-1">Total Pendapatan (Semua)</span>
-        <h3 class="card-title mb-2 text-primary">Rp {{ number_format($stats['total_pendapatan_all'], 0, ',', '.') }}</h3>
+        <span class="fw-semibold d-block mb-1">PSB Pasang Baru</span>
+        <h3 class="card-title mb-2 text-primary">Rp {{ number_format($stats['total_psb'], 0, ',', '.') }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6 col-md-6 mb-4">
+    <div class="card" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: none;">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <span class="avatar-initial rounded bg-label-primary p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+              <i class="bx bx-wrench text-primary fs-4"></i>
+            </span>
+          </div>
+          <a href="{{ route('inventory.index') }}" class="btn btn-xs btn-outline-primary">Kelola</a>
+        </div>
+        <span class="fw-semibold d-block mb-1">Aset Alat & Peralatan (Inventaris)</span>
+        <h3 class="card-title mb-2 text-dark">Rp {{ number_format($totalInventoryValue, 0, ',', '.') }}</h3>
+        <small class="text-muted"><i class="bx bx-package"></i> {{ $totalInventoryItems }} Jenis Alat Terdaftar</small>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6 col-md-6 mb-4">
+    <div class="card" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: none;">
+      <div class="card-body">
+        <div class="card-title d-flex align-items-start justify-content-between">
+          <div class="avatar flex-shrink-0">
+            <span class="avatar-initial rounded bg-label-danger p-2 d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+              <i class="bx bx-wallet text-danger fs-4"></i>
+            </span>
+          </div>
+          <a href="{{ route('kas-bon.index') }}" class="btn btn-xs btn-outline-danger">Kelola</a>
+        </div>
+        <span class="fw-semibold d-block mb-1">Kas Bon Pekerja (Belum Lunas)</span>
+        <h3 class="card-title mb-2 text-danger">Rp {{ number_format($totalKasBonOutstanding, 0, ',', '.') }}</h3>
+        <small class="text-muted"><i class="bx bx-user"></i> Pinjaman Aktif Teknisi</small>
       </div>
     </div>
   </div>

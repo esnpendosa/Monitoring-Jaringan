@@ -27,16 +27,32 @@ class OdcOdpController extends Controller
             'tipe' => 'required|in:ODC,ODP',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'deskripsi' => 'nullable|string',
             'parent_id' => 'nullable|exists:odc_odp,id'
         ]);
 
+        if ($request->hasFile('foto')) {
+            $file = $request->file('foto');
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                return back()->withErrors(['foto' => 'Foto harus berupa gambar (jpg, jpeg, png, gif, webp).'])->withInput();
+            }
+            if ($file->getSize() > 2048 * 1024) {
+                return back()->withErrors(['foto' => 'Foto tidak boleh lebih dari 2MB.'])->withInput();
+            }
+        }
+
         $data = $request->all();
 
         if ($request->hasFile('foto')) {
-            $path = $request->file('foto')->store('odc_odp', 'public');
-            $data['foto'] = Storage::url($path);
+            $file = $request->file('foto');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            $destinationPath = storage_path('app/public/odc_odp');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+            $file->move($destinationPath, $filename);
+            $data['foto'] = '/storage/odc_odp/' . $filename;
         }
 
         OdcOdp::create($data);
@@ -57,22 +73,40 @@ class OdcOdpController extends Controller
             'tipe' => 'required|in:ODC,ODP',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'deskripsi' => 'nullable|string',
             'parent_id' => 'nullable|exists:odc_odp,id'
         ]);
+
+        if ($request->hasFile('foto')) {
+            $file = $request->file('foto');
+            $extension = strtolower($file->getClientOriginalExtension());
+            if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+                return back()->withErrors(['foto' => 'Foto harus berupa gambar (jpg, jpeg, png, gif, webp).'])->withInput();
+            }
+            if ($file->getSize() > 2048 * 1024) {
+                return back()->withErrors(['foto' => 'Foto tidak boleh lebih dari 2MB.'])->withInput();
+            }
+        }
 
         $data = $request->all();
 
         if ($request->hasFile('foto')) {
             // Hapus foto lama jika ada
             if ($odcOdp->foto) {
-                $oldPath = str_replace('/storage/', '', $odcOdp->foto);
-                Storage::disk('public')->delete($oldPath);
+                $oldPath = storage_path('app/public/' . str_replace('/storage/', '', $odcOdp->foto));
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
             
-            $path = $request->file('foto')->store('odc_odp', 'public');
-            $data['foto'] = Storage::url($path);
+            $file = $request->file('foto');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            $destinationPath = storage_path('app/public/odc_odp');
+            if (!file_exists($destinationPath)) {
+                mkdir($destinationPath, 0777, true);
+            }
+            $file->move($destinationPath, $filename);
+            $data['foto'] = '/storage/odc_odp/' . $filename;
         }
 
         $odcOdp->update($data);
@@ -83,8 +117,10 @@ class OdcOdpController extends Controller
     public function destroy(OdcOdp $odcOdp)
     {
         if ($odcOdp->foto) {
-            $oldPath = str_replace('/storage/', '', $odcOdp->foto);
-            Storage::disk('public')->delete($oldPath);
+            $oldPath = storage_path('app/public/' . str_replace('/storage/', '', $odcOdp->foto));
+            if (file_exists($oldPath)) {
+                unlink($oldPath);
+            }
         }
         
         $odcOdp->delete();

@@ -23,7 +23,7 @@ class MonitorPelanggan extends Command
         \Illuminate\Support\Facades\Cache::put($cacheKey, true, 120);
 
         $pelanggans = Pelanggan::where('is_active', true)->whereNotNull('id_router')->get();
-        $adminNum = env('WHATSAPP_ADMIN_NUMBER', '6282187827382');
+        $adminNum = env('WHATSAPP_ADMIN_NUMBER');
         $waClient = new WhatsappClient();
 
         foreach ($pelanggans as $p) {

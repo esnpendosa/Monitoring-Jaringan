@@ -137,7 +137,7 @@
         <p>Silakan isi form di bawah untuk mendaftarkan rumah Anda ke jaringan RT RW NET kami</p>
       </div>
       
-      <form action="{{ route('public.register.store') }}" method="POST" class="form-section">
+      <form action="{{ route('public.register.store') }}" method="POST" enctype="multipart/form-data" class="form-section">
         @csrf
         
         <div class="row g-4">
@@ -171,6 +171,16 @@
             </select>
           </div>
           
+          <!-- Foto Rumah -->
+          <div class="col-md-12">
+            <label class="form-label">Foto Rumah Depan (Opsional)</label>
+            <div class="icon-input">
+              <i class="bx bx-image-add"></i>
+              <input type="file" name="foto_rumah" class="form-control" accept="image/*">
+            </div>
+            <small class="text-muted">Upload foto bagian depan rumah Anda untuk mempermudah identifikasi lokasi survei.</small>
+          </div>
+
           <!-- Alamat Lengkap -->
           <div class="col-md-12">
             <label class="form-label">Alamat Rumah Lengkap</label>

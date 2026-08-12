@@ -12,7 +12,10 @@
     
     // Summary Stats
     $user = auth()->user();
-    if ($user->id_role == 4) {
+    $roleName = $user->role ? $user->role->name : 'Pelanggan';
+    $isPelanggan = ($roleName === 'Pelanggan' || $user->id_role == 4);
+    
+    if ($isPelanggan) {
         $totalTagihan = \App\Models\Tagihan::whereHas('pelanggan', fn($q) => $q->where('id_user', $user->id))->count();
         $totalPaid = \App\Models\Tagihan::where('status', 'paid')->whereHas('pelanggan', fn($q) => $q->where('id_user', $user->id))->count();
         $totalUnpaid = \App\Models\Tagihan::where('status', 'unpaid')->whereHas('pelanggan', fn($q) => $q->where('id_user', $user->id))->count();
@@ -35,6 +38,7 @@
     }
 @endphp
 
+@if(!$isPelanggan)
 <div class="row mb-4">
     <div class="col-sm-6 col-lg-4">
         <div class="card card-border-shadow-primary h-100">
@@ -83,10 +87,13 @@
                     <small class="text-danger fw-semibold">{{ $totalUnpaid }}</small>
                     <small class="text-muted"> perlu ditindaklanjuti</small>
                 </p>
+            </div>
         </div>
     </div>
 </div>
+@endif
 
+@if(!$isPelanggan)
 <div class="row mb-4">
     <div class="col-sm-6 col-lg-6 mb-3 mb-sm-0">
         <div class="card card-border-shadow-success h-100 shadow-sm">
@@ -121,6 +128,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="card mb-4">
     <div class="card-header border-bottom p-0">
@@ -145,35 +153,76 @@
         </div>
     </div>
     <div class="card-body pt-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Daftar Tagihan Pelanggan</h5>
-            <div class="d-flex align-items-center">
-                <form action="{{ route('billing.index') }}" method="GET" class="me-2" id="searchBillingForm">
+        <div class="d-flex flex-column gap-3 mb-4">
+            <!-- Row 1: Title and Action Buttons -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <h5 class="mb-0">Daftar Tagihan Pelanggan</h5>
+                @if(auth()->user()->id_role == 1)
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm" id="btnKosongkanSemua">
+                        <i class="bx bx-trash me-1"></i> Kosongkan Semua
+                    </button>
+                    <button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTambahTagihan">
+                        <i class="bx bx-plus me-1"></i> Input Tagihan Manual
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalGenerateTagihan">
+                        <i class="bx bx-plus-circle me-1"></i> Buat Tagihan Baru
+                    </button>
+                </div>
+                @endif
+            </div>
+
+            <!-- Row 2: Filters and Search Input -->
+            @if(!$isPelanggan)
+            <div>
+                <form action="{{ route('billing.index') }}" method="GET" class="row g-2 align-items-center" id="searchBillingForm">
                     @if(request('status'))
                         <input type="hidden" name="status" value="{{ request('status') }}">
                     @endif
-                    <div class="input-group input-group-merge">
-                        <span class="input-group-text"><i class="bx bx-search"></i></span>
-                        <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari pelanggan/kode..." value="{{ request('search') }}">
-                        @if(request('search'))
-                        <a href="{{ route('billing.index', ['status' => request('status')]) }}" class="input-group-text bg-transparent border-start-0 text-muted" title="Bersihkan Pencarian">
-                            <i class="bx bx-x"></i>
-                        </a>
-                        @endif
+
+                    <div class="col-12 col-md-3">
+                        <select name="filter_khusus" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">-- Filter Khusus --</option>
+                            <option value="unpaid_3_months" {{ request('filter_khusus') == 'unpaid_3_months' ? 'selected' : '' }}>Belum Bayar >= 3 Bulan</option>
+                            <option value="unpaid_2_months" {{ request('filter_khusus') == 'unpaid_2_months' ? 'selected' : '' }}>Belum Bayar >= 2 Bulan</option>
+                            <option value="paid_3_months" {{ request('filter_khusus') == 'paid_3_months' ? 'selected' : '' }}>Sudah Bayar >= 3 Bulan Sekaligus</option>
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <select name="filter_bulan" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">-- Bulan --</option>
+                            @for($i=1; $i<=12; $i++)
+                            <option value="{{ $i }}" {{ request('filter_bulan') == $i ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $i, 10)) }}</option>
+                            @endfor
+                        </select>
+                    </div>
+
+                    <div class="col-6 col-md-2">
+                        <select name="filter_tahun" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">-- Tahun --</option>
+                            @for($y=now()->year; $y>=2020; $y--)
+                            <option value="{{ $y }}" {{ request('filter_tahun') == $y ? 'selected' : '' }}>{{ $y }}</option>
+                            @endfor
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-5">
+                        <div class="input-group input-group-merge">
+                            <span class="input-group-text"><i class="bx bx-search"></i></span>
+                            <input type="text" name="search" class="form-control form-control-sm" placeholder="Cari nama, kode, IP, alamat..." value="{{ request('search') }}">
+                            @if(request('search') || request('filter_khusus') || request('filter_bulan') || request('filter_tahun'))
+                            <a href="{{ route('billing.index', ['status' => request('status')]) }}" class="input-group-text bg-transparent border-start-0 text-muted" title="Bersihkan Pencarian">
+                                <i class="bx bx-x"></i>
+                            </a>
+                            @endif
+                        </div>
                     </div>
                     <button type="submit" style="display: none;"></button>
                 </form>
-                @if(auth()->user()->id_role == 1)
-                <a href="{{ route('billing.delete-all-direct') }}" class="btn btn-outline-danger btn-sm me-2">
-                    <i class="bx bx-trash me-1" style="pointer-events: none;"></i> Kosongkan Semua
-                </a>
-                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalGenerateTagihan">
-                    <i class="bx bx-plus-circle me-1"></i> Buat Tagihan Baru
-                </button>
-                @endif
             </div>
+            @endif
         </div>
-    </div>
 
     <!-- Modal Generate Tagihan -->
     @if(auth()->user()->id_role == 1)
@@ -245,7 +294,7 @@
                                 <select name="id_pelanggan" id="id_pelanggan" class="form-select">
                                     <option value="">-- Pilih Pelanggan --</option>
                                     @foreach($allPelanggan as $p)
-                                    <option value="{{ $p->id_pelanggan }}">{{ $p->nama_pelanggan }} ({{ $p->kode_pelanggan }})</option>
+                                    <option value="{{ $p->id_pelanggan }}">[{{ $p->kode_pelanggan }}] {{ $p->nama_pelanggan }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -273,6 +322,91 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Tambah Tagihan Manual -->
+    @if(auth()->user()->id_role == 1)
+    <div class="modal fade" id="modalTambahTagihan" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ route('billing.store') }}" method="POST">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">Input Tagihan Manual (Riwayat/Baru)</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Pelanggan</label>
+                            <select name="id_pelanggan" id="tambah_id_pelanggan" class="form-select" required onchange="updateDefaultJumlah()">
+                                <option value="">-- Pilih Pelanggan --</option>
+                                @foreach($allPelanggan as $p)
+                                <option value="{{ $p->id_pelanggan }}" data-harga="{{ $p->harga_layanan }}">[{{ $p->kode_pelanggan }}] {{ $p->nama_pelanggan }} - Rp{{ number_format($p->harga_layanan, 0, ',', '.') }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label">Bulan</label>
+                                <select name="bulan" class="form-select" required>
+                                    @for($i=1; $i<=12; $i++)
+                                    <option value="{{ $i }}" {{ now()->month == $i ? 'selected' : '' }}>{{ date('F', mktime(0, 0, 0, $i, 10)) }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Tahun</label>
+                                <input type="number" name="tahun" class="form-control" value="{{ now()->year }}" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Jumlah Tagihan (Rp)</label>
+                            <input type="number" name="jumlah" id="tambah_jumlah" class="form-control" required placeholder="Contoh: 150000">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Status Pembayaran</label>
+                            <select name="status" id="tambah_status" class="form-select" required onchange="toggleTambahPaidSection()">
+                                <option value="unpaid">Belum Bayar</option>
+                                <option value="paid">Sudah Bayar (Lunas)</option>
+                                <option value="pending">Pending / Menunggu Verifikasi</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch mt-2">
+                                <input class="form-check-input" type="checkbox" name="bayar_di_awal" id="tambah_bayar_di_awal" value="1">
+                                <label class="form-check-label" for="tambah_bayar_di_awal">Bayar di Awal (Bulan Selanjutnya)</label>
+                            </div>
+                            <small class="text-muted">Centang jika ini adalah pembayaran di awal untuk bulan selanjutnya agar tidak dihitung sebagai pemasukan bulan tersebut.</small>
+                        </div>
+                        <div id="tambahPaidSection" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Metode Pembayaran</label>
+                                <select name="metode_pembayaran" class="form-select">
+                                    @foreach(explode(',', \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay')) as $method)
+                                        <option value="{{ trim($method) }}">{{ trim($method) }}</option>
+                                    @endforeach
+                                    <option value="Midtrans">Midtrans (Otomatis)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Waktu Pembayaran (Paid At)</label>
+                                <input type="datetime-local" name="paid_at" class="form-control" value="{{ now()->format('Y-m-d\TH:i') }}">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Catatan Admin</label>
+                            <textarea name="catatan_admin" class="form-control" rows="2" placeholder="Contoh: Pembayaran bulan lalu manual via cash"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Tagihan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <script>
         function toggleMode() {
             const mode = document.querySelector('input[name="mode"]:checked').value;
@@ -316,14 +450,35 @@
                     <td>
                         @if($t->status == 'paid')
                             <span class="badge bg-label-success">Lunas</span>
+                            @if($t->bayar_di_awal)
+                                <span class="badge bg-label-info ms-1">Bayar di Awal</span>
+                            @endif
                             <br><small class="text-muted">{{ $t->paid_at }} via {{ $t->metode_pembayaran ?? 'System' }}</small>
                             @if($t->bukti_bayar && file_exists(storage_path('app/public/' . $t->bukti_bayar)))
                                 <br><a href="{{ asset('storage/' . $t->bukti_bayar) }}" target="_blank" class="small text-info"><i class='bx bx-image-alt'></i> Lihat Bukti TF</a>
+                                @php
+                                    $canEditProof = auth()->user()->id_role == 1 || auth()->user()->id_role == 2 || 
+                                                    ($t->pelanggan && $t->pelanggan->id_user == auth()->id());
+                                @endphp
+                                @if($canEditProof)
+                                    <a href="{{ route('billing.edit-bukti-bayar', $t->id_tagihan) }}" class="small text-warning ms-2">
+                                        <i class='bx bx-edit'></i> Edit Bukti
+                                    </a>
+                                @endif
                             @endif
                         @elseif($t->status == 'pending' || ($t->status == 'unpaid' && $t->bukti_bayar))
                             <span class="badge bg-label-info">Menunggu Verifikasi</span>
                             @if($t->bukti_bayar && file_exists(storage_path('app/public/' . $t->bukti_bayar)))
                                 <br><a href="{{ asset('storage/' . $t->bukti_bayar) }}" target="_blank" class="small"><i class='bx bx-image'></i> Lihat Bukti</a>
+                                @php
+                                    $canEditProof = auth()->user()->id_role == 1 || auth()->user()->id_role == 2 || 
+                                                    ($t->pelanggan && $t->pelanggan->id_user == auth()->id());
+                                @endphp
+                                @if($canEditProof)
+                                    <a href="{{ route('billing.edit-bukti-bayar', $t->id_tagihan) }}" class="small text-warning ms-2">
+                                        <i class='bx bx-edit'></i> Edit Bukti
+                                    </a>
+                                @endif
                             @endif
                         @elseif($t->status == 'unpaid')
                             <span class="badge bg-label-warning">Belum Bayar</span>
@@ -406,6 +561,16 @@
             </tbody>
         </table>
     </div>
+    
+    <!-- Pagination -->
+    <div class="mt-3 d-flex justify-content-between align-items-center">
+        <div class="text-muted small">
+            Menampilkan {{ $tagihan->firstItem() ?? 0 }} - {{ $tagihan->lastItem() ?? 0 }} dari {{ $tagihan->total() }} tagihan
+        </div>
+        <div>
+            {{ $tagihan->links() }}
+        </div>
+    </div>
 </div>
 
 <!-- Modals rendered outside of table to prevent click blocking overlay bugs -->
@@ -428,7 +593,7 @@
                         <div class="mb-3">
                             <label class="form-label">Metode</label>
                             @php
-                                $methods = explode(',', \App\Models\Setting::get('manual_payment_methods', 'Transfer Bank,Cash'));
+                                $methods = explode(',', \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay'));
                             @endphp
                             <select name="metode_pembayaran" class="form-select" required>
                                 @foreach($methods as $method)
@@ -438,7 +603,21 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Upload Bukti Bayar (Jika TF/QRIS)</label>
-                            <input type="file" name="bukti_bayar" class="form-control" accept="image/*">
+                            <div class="drop-zone" id="dropZone{{ $t->id_tagihan }}"
+                                 style="border: 2px dashed #adb5bd; border-radius: 8px; padding: 24px; text-align: center; cursor: pointer; transition: background .2s, border-color .2s; background: #f8f9fa;">
+                                <div class="drop-zone__prompt" id="dropPrompt{{ $t->id_tagihan }}">
+                                    <i class='bx bx-cloud-upload' style="font-size:2rem; color:#6c757d;"></i>
+                                    <div class="mt-1 text-muted small">Drag &amp; drop gambar di sini, atau <span class="text-primary fw-semibold">pilih file</span></div>
+                                    <div class="text-muted" style="font-size:0.75rem;">JPG, PNG, GIF, PDF — maks 3MB</div>
+                                </div>
+                                <div class="drop-zone__preview d-none" id="dropPreview{{ $t->id_tagihan }}">
+                                    <img id="dropImg{{ $t->id_tagihan }}" src="" alt="preview" style="max-height:140px; max-width:100%; border-radius:6px; object-fit:contain;">
+                                    <div class="mt-1 small text-muted" id="dropName{{ $t->id_tagihan }}"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-1 drop-zone__clear" data-id="{{ $t->id_tagihan }}">Hapus</button>
+                                </div>
+                                <input type="file" name="bukti_bayar" id="buktiFile{{ $t->id_tagihan }}"
+                                       class="d-none" accept="image/jpeg,image/jpg,image/png,image/gif,application/pdf">
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -472,6 +651,18 @@
                             <div class="small mt-1">Bukti Transfer Fisik Tidak Tersedia (Hanya Catatan Sistem)</div>
                         </div>
                         @endif
+                        <div class="mb-3">
+                            <label class="form-label">Metode Pembayaran</label>
+                            <select name="metode_pembayaran" class="form-select" required>
+                                @foreach(explode(',', \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay')) as $method)
+                                    <option value="{{ trim($method) }}" {{ $t->metode_pembayaran == trim($method) ? 'selected' : '' }}>{{ trim($method) }}</option>
+                                @endforeach
+                                <option value="Midtrans" {{ $t->metode_pembayaran == 'Midtrans' ? 'selected' : '' }}>Midtrans (Otomatis)</option>
+                                @if($t->metode_pembayaran && !in_array(trim($t->metode_pembayaran), array_map('trim', explode(',', \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay')))) && $t->metode_pembayaran != 'Midtrans')
+                                    <option value="{{ $t->metode_pembayaran }}" selected>{{ $t->metode_pembayaran }}</option>
+                                @endif
+                            </select>
+                        </div>
                         <div class="mb-3">
                             <label class="form-label">Waktu Pembayaran (Sesuai Struk)</label>
                             <input type="datetime-local" name="paid_at" class="form-control" value="{{ $t->updated_at->format('Y-m-d\TH:i') }}" required>
@@ -569,9 +760,29 @@
                                     <option value="cancelled" {{ $t->status == 'cancelled' ? 'selected' : '' }}>Dibatalkan</option>
                                 </select>
                             </div>
+                            <div class="col-12 mt-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="bayar_di_awal" id="edit_bayar_di_awal{{ $t->id_tagihan }}" value="1" {{ $t->bayar_di_awal ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="edit_bayar_di_awal{{ $t->id_tagihan }}">Bayar di Awal (Bulan Selanjutnya)</label>
+                                </div>
+                                <small class="text-muted">Centang jika ini adalah pembayaran di awal untuk bulan selanjutnya agar tidak dihitung sebagai pemasukan bulan tersebut.</small>
+                            </div>
                             <div class="col-12" id="paidAtSection{{ $t->id_tagihan }}" style="{{ $t->status == 'paid' ? '' : 'display:none' }}">
                                 <label class="form-label">Waktu Pembayaran (Paid At)</label>
                                 <input type="datetime-local" name="paid_at" class="form-control" value="{{ $t->paid_at ? date('Y-m-d\TH:i', strtotime($t->paid_at)) : '' }}">
+                            </div>
+                            <div class="col-12" id="metodePembayaranSection{{ $t->id_tagihan }}" style="{{ $t->status == 'paid' ? '' : 'display:none' }}">
+                                <label class="form-label">Metode Pembayaran</label>
+                                <select name="metode_pembayaran" class="form-select">
+                                    <option value="">-- Pilih Metode --</option>
+                                    @foreach(explode(',', \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay')) as $method)
+                                        <option value="{{ trim($method) }}" {{ $t->metode_pembayaran == trim($method) ? 'selected' : '' }}>{{ trim($method) }}</option>
+                                    @endforeach
+                                    <option value="Midtrans" {{ $t->metode_pembayaran == 'Midtrans' ? 'selected' : '' }}>Midtrans (Otomatis)</option>
+                                    @if($t->metode_pembayaran && !in_array(trim($t->metode_pembayaran), array_map('trim', explode(',', \App\Models\Setting::get('manual_payment_methods', 'Cash, Transfer BRI, Transfer BCA, Transfer BNI, Transfer Mandiri, Transfer DANA, Transfer OVO, Transfer ShopeePay, Transfer Gopay')))) && $t->metode_pembayaran != 'Midtrans')
+                                        <option value="{{ $t->metode_pembayaran }}" selected>{{ $t->metode_pembayaran }}</option>
+                                    @endif
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -593,15 +804,45 @@
 @endsection
 
 @section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
 <script src="{{ \App\Models\Setting::get('midtrans_is_production', '0') == '1' ? 'https://app.midtrans.com/snap/snap.js' : 'https://app.sandbox.midtrans.com/snap/snap.js' }}" data-client-key="{{ \App\Models\Setting::get('midtrans_client_key', config('services.midtrans.client_key')) }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Kosongkan Semua confirmation dialog
+        const btnKosongkan = document.getElementById('btnKosongkanSemua');
+        if (btnKosongkan) {
+            btnKosongkan.addEventListener('click', function(e) {
+                e.preventDefault();
+                Swal.fire({
+                    title: 'Kosongkan Semua Tagihan?',
+                    text: "Seluruh data tagihan akan dihapus secara permanen dari database. Tindakan ini tidak dapat dibatalkan!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ff3e1d',
+                    cancelButtonColor: '#8592a3',
+                    confirmButtonText: 'Ya, Kosongkan!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = "{{ route('billing.delete-all-direct') }}";
+                    }
+                });
+            });
+        }
         if (document.getElementById('id_pelanggan')) {
             new TomSelect("#id_pelanggan", {
                 create: false,
                 placeholder: "-- Pilih Pelanggan --",
                 dropdownParent: '#modalGenerateTagihan'
+            });
+        }
+
+        if (document.getElementById('tambah_id_pelanggan')) {
+            new TomSelect("#tambah_id_pelanggan", {
+                create: false,
+                placeholder: "-- Pilih Pelanggan --",
+                dropdownParent: '#modalTambahTagihan'
             });
         }
 
@@ -664,10 +905,13 @@
     function togglePaidAt(id) {
         const status = document.getElementById('status' + id).value;
         const section = document.getElementById('paidAtSection' + id);
+        const methodSection = document.getElementById('metodePembayaranSection' + id);
         if(status === 'paid') {
-            section.style.display = 'block';
+            if(section) section.style.display = 'block';
+            if(methodSection) methodSection.style.display = 'block';
         } else {
-            section.style.display = 'none';
+            if(section) section.style.display = 'none';
+            if(methodSection) methodSection.style.display = 'none';
         }
     }
 
@@ -678,5 +922,111 @@
             btn.disabled = !check.checked;
         }
     }
+
+    function updateDefaultJumlah() {
+        const select = document.getElementById('tambah_id_pelanggan');
+        const selectedOption = select.options[select.selectedIndex];
+        const harga = selectedOption.getAttribute('data-harga');
+        const jumlahInput = document.getElementById('tambah_jumlah');
+        if (harga) {
+            jumlahInput.value = harga;
+        } else {
+            jumlahInput.value = '';
+        }
+    }
+
+    function toggleTambahPaidSection() {
+        const status = document.getElementById('tambah_status').value;
+        const section = document.getElementById('tambahPaidSection');
+        if (status === 'paid') {
+            section.style.display = 'block';
+        } else {
+            section.style.display = 'none';
+        }
+    }
+
+    // ── Drag & Drop Bukti Bayar ───────────────────────────────────────────────
+    document.querySelectorAll('.drop-zone').forEach(function(zone) {
+        const id      = zone.id.replace('dropZone', '');
+        const input   = document.getElementById('buktiFile' + id);
+        const prompt  = document.getElementById('dropPrompt' + id);
+        const preview = document.getElementById('dropPreview' + id);
+        const img     = document.getElementById('dropImg' + id);
+        const name    = document.getElementById('dropName' + id);
+
+        // Click zone → trigger file input
+        zone.addEventListener('click', function(e) {
+            if (!e.target.classList.contains('drop-zone__clear')) input.click();
+        });
+
+        // Drag visual feedback
+        zone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            zone.style.background = '#e8f4ff';
+            zone.style.borderColor = '#0d6efd';
+        });
+        zone.addEventListener('dragleave', function() {
+            zone.style.background = '#f8f9fa';
+            zone.style.borderColor = '#adb5bd';
+        });
+
+        // Drop file
+        zone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            zone.style.background = '#f8f9fa';
+            zone.style.borderColor = '#adb5bd';
+            const file = e.dataTransfer.files[0];
+            if (file) setFile(file);
+        });
+
+        // Normal file input change
+        input.addEventListener('change', function() {
+            if (input.files[0]) setFile(input.files[0]);
+        });
+
+        // Clear button
+        zone.addEventListener('click', function(e) {
+            if (e.target.classList.contains('drop-zone__clear')) {
+                input.value = '';
+                prompt.classList.remove('d-none');
+                preview.classList.add('d-none');
+                img.src = '';
+            }
+        });
+
+        function setFile(file) {
+            // Validate size 3MB
+            if (file.size > 3 * 1024 * 1024) {
+                alert('Ukuran file maksimal 3MB');
+                return;
+            }
+            // Transfer to real input via DataTransfer
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            input.files = dt.files;
+
+            name.textContent = file.name;
+            prompt.classList.add('d-none');
+            preview.classList.remove('d-none');
+
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) { img.src = e.target.result; };
+                reader.readAsDataURL(file);
+            } else {
+                // PDF — show icon instead
+                img.src = '';
+                img.alt = '';
+                img.style.display = 'none';
+                const pdfIcon = preview.querySelector('.pdf-icon');
+                if (!pdfIcon) {
+                    const div = document.createElement('div');
+                    div.className = 'pdf-icon my-2';
+                    div.innerHTML = "<i class='bx bxs-file-pdf' style='font-size:3rem;color:#dc3545;'></i>";
+                    preview.insertBefore(div, name);
+                }
+            }
+        }
+    });
 </script>
 @endsection

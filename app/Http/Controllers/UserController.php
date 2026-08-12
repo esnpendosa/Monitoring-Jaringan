@@ -40,7 +40,9 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8',
             'id_role' => 'required|exists:roles,id_role',
-            'id_pelanggan' => 'nullable|exists:pelanggan,id_pelanggan'
+            'id_pelanggan' => 'nullable|exists:pelanggan,id_pelanggan',
+            'pin_fingerspot' => 'nullable|string|max:50|unique:users',
+            'no_hp' => 'nullable|string|max:20'
         ]);
 
         $user = User::create([
@@ -49,6 +51,8 @@ class UserController extends Controller
             'username_email' => $request->email,
             'password' => Hash::make($request->password),
             'id_role' => $request->id_role,
+            'pin_fingerspot' => $request->pin_fingerspot,
+            'no_hp' => $request->no_hp,
             'is_active' => true
         ]);
 
@@ -75,13 +79,17 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'id_role' => 'required|exists:roles,id_role',
-            'id_pelanggan' => 'nullable|exists:pelanggan,id_pelanggan'
+            'id_pelanggan' => 'nullable|exists:pelanggan,id_pelanggan',
+            'pin_fingerspot' => 'nullable|string|max:50|unique:users,pin_fingerspot,' . $user->id,
+            'no_hp' => 'nullable|string|max:20'
         ]);
 
         $user->update([
             'name' => $request->name,
             'email' => $request->email,
-            'id_role' => $request->id_role
+            'id_role' => $request->id_role,
+            'pin_fingerspot' => $request->pin_fingerspot,
+            'no_hp' => $request->no_hp
         ]);
 
         if ($request->password) {

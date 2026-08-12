@@ -256,7 +256,7 @@
                         <p>Multimedia Indonesia</p>
                     </div>
                 </div>
-                <div class="service-badge">{{ $p->mikrotik_type ?? 'WIFI' }}</div>
+
             </div>
 
             <div class="card-body">

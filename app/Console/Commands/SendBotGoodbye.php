@@ -29,6 +29,7 @@ class SendBotGoodbye extends Command
      */
     public function handle()
     {
+        set_time_limit(0);
         $minutes = 5;
         $threshold = time() - ($minutes * 60);
 
@@ -76,6 +77,9 @@ class SendBotGoodbye extends Command
                     'is_from_me' => true,
                     'timestamp' => time()
                 ]);
+                
+                // Jeda 3-5 detik
+                sleep(rand(3, 5));
             }
         }
 

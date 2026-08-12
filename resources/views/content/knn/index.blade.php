@@ -12,8 +12,7 @@
         <h5 class="mb-0">Proses KNN</h5>
         <form action="{{ route('knn.batch') }}" method="POST" class="d-inline">
           @csrf
-          <input type="hidden" name="nilai_k" value="3">
-          <button type="submit" class="btn btn-sm btn-outline-info">Proses Semua Pelanggan (K=3)</button>
+          <button type="submit" class="btn btn-sm btn-outline-info">Proses Semua Pelanggan (K Otomatis)</button>
         </form>
       </div>
       <div class="card-body">
@@ -29,8 +28,11 @@
             </select>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="nilai_k">Nilai K (Tetangga Terdekat)</label>
-            <input type="number" name="nilai_k" id="nilai_k" class="form-control" value="3" min="1" required />
+            <label class="form-label" for="nilai_k">Nilai K (Terpilih Otomatis)</label>
+            <input type="text" id="nilai_k" class="form-control bg-light" value="K = {{ $bestK }} (Akurasi: {{ $bestAcc }}%)" readonly />
+            <div class="form-text text-success">
+              <i class="bx bx-check-shield me-1"></i>Sistem otomatis memilih K terbaik dari K=1 s/d K=9.
+            </div>
           </div>
           <button type="submit" class="btn btn-primary w-100">Proses Klasifikasi</button>
         </form>
@@ -40,11 +42,11 @@
     <!-- TABEL 4.5 CARD (SESUAI SKRIPSI) -->
     <div class="card mb-4 shadow-sm border-left-primary">
       <div class="card-header d-flex justify-content-between align-items-center bg-label-primary py-3">
-        <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-table me-1"></i> Tabel 4.5 Akurasi KNN (K=3)</h6>
-        <span class="badge bg-success">Akurasi: 100%</span>
+        <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-table me-1"></i> Tabel 4.5 Akurasi KNN (K={{ $bestK }})</h6>
+        <span class="badge bg-success">Akurasi: {{ $bestAcc }}%</span>
       </div>
       <div class="card-body pt-3">
-        <p class="small text-muted mb-2">Sampel Perbandingan Hasil Aktual vs Prediksi KNN (K=3) sesuai Bab IV Skripsi:</p>
+        <p class="small text-muted mb-2">Sampel Perbandingan Hasil Aktual vs Prediksi KNN (K={{ $bestK }}) sesuai Bab IV Skripsi:</p>
         <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
           <table class="table table-sm table-bordered table-hover">
             <thead>
@@ -131,7 +133,7 @@
           </table>
         </div>
         <p class="text-muted mt-2 mb-0" style="font-size: 10px; line-height: 1.3;">
-          * Hasil pengujian menunjukkan kecocokan sempurna 100% antara label aktual dengan hasil prediksi KNN (K=3) menggunakan 4 parameter utama.
+          * Hasil pengujian menunjukkan kecocokan sempurna {{ $bestAcc }}% antara label aktual dengan hasil prediksi KNN (K={{ $bestK }}) menggunakan 4 parameter utama.
         </p>
       </div>
     </div>
@@ -140,10 +142,10 @@
     <div class="card mb-4 shadow-sm border-left-info">
       <div class="card-header d-flex justify-content-between align-items-center bg-label-info py-3">
         <h6 class="mb-0 fw-bold text-info"><i class="bx bx-chart me-1"></i> Tabel 4.6 Evaluasi Akurasi Berdasarkan K</h6>
-        <span class="badge bg-info">K Optimal: K=3</span>
+        <span class="badge bg-info">K Optimal: K={{ $bestK }}</span>
       </div>
       <div class="card-body pt-3">
-        <p class="small text-muted mb-2">Perbandingan Akurasi Sistem berdasarkan variasi Nilai K (Dataset: 75 Latih / 25 Uji):</p>
+        <p class="small text-muted mb-2">Perbandingan Akurasi Sistem berdasarkan variasi Nilai K (Dataset: Latih / Uji):</p>
         <div class="table-responsive">
           <table class="table table-sm table-bordered table-hover text-center mb-0">
             <thead>
@@ -155,65 +157,19 @@
               </tr>
             </thead>
             <tbody>
-              <tr class="table-success">
-                <td><small class="fw-bold">K = 1</small></td>
-                <td><small>25 / 25</small></td>
-                <td><small>0</small></td>
-                <td><small class="fw-bold">100%</small></td>
+              @foreach($evaluasi as $eval)
+              <tr class="{{ $eval['k'] == $bestK ? 'table-success' : '' }}" @if($eval['k'] == $bestK) style="border: 2px solid #03c3ec;" @endif>
+                <td><small class="{{ $eval['k'] == $bestK ? 'fw-bold text-info' : 'fw-bold' }}">K = {{ $eval['k'] }}{{ $eval['k'] == $bestK ? ' (Optimal)' : '' }}</small></td>
+                <td><small class="{{ $eval['k'] == $bestK ? 'fw-bold text-info' : '' }}">{{ $eval['benar'] }} / {{ $eval['total'] }}</small></td>
+                <td><small class="{{ $eval['k'] == $bestK ? 'fw-bold text-info' : '' }}">{{ $eval['salah'] }}</small></td>
+                <td><small class="{{ $eval['k'] == $bestK ? 'fw-bold text-info' : 'fw-bold' }}">{{ $eval['akurasi'] }}%</small></td>
               </tr>
-              <tr class="table-success">
-                <td><small class="fw-bold">K = 2</small></td>
-                <td><small>25 / 25</small></td>
-                <td><small>0</small></td>
-                <td><small class="fw-bold">100%</small></td>
-              </tr>
-              <tr class="table-success" style="border: 2px solid #03c3ec;">
-                <td><small class="fw-bold text-info">K = 3 (Optimal)</small></td>
-                <td><small class="fw-bold text-info">25 / 25</small></td>
-                <td><small class="fw-bold text-info">0</small></td>
-                <td><small class="fw-bold text-info">100%</small></td>
-              </tr>
-              <tr>
-                <td><small>K = 4</small></td>
-                <td><small>24 / 25</small></td>
-                <td><small>1</small></td>
-                <td><small class="fw-semibold">96%</small></td>
-              </tr>
-              <tr>
-                <td><small>K = 5</small></td>
-                <td><small>24 / 25</small></td>
-                <td><small>1</small></td>
-                <td><small class="fw-semibold">96%</small></td>
-              </tr>
-              <tr>
-                <td><small>K = 6</small></td>
-                <td><small>24 / 25</small></td>
-                <td><small>1</small></td>
-                <td><small class="fw-semibold">96%</small></td>
-              </tr>
-              <tr>
-                <td><small>K = 7</small></td>
-                <td><small>24 / 25</small></td>
-                <td><small>1</small></td>
-                <td><small class="fw-semibold">96%</small></td>
-              </tr>
-              <tr>
-                <td><small>K = 8</small></td>
-                <td><small>23 / 25</small></td>
-                <td><small>2</small></td>
-                <td><small>92%</small></td>
-              </tr>
-              <tr>
-                <td><small>K = 9</small></td>
-                <td><small>23 / 25</small></td>
-                <td><small>2</small></td>
-                <td><small>92%</small></td>
-              </tr>
+              @endforeach
             </tbody>
           </table>
         </div>
         <p class="text-muted mt-2 mb-0" style="font-size: 10px; line-height: 1.35;">
-          * Nilai <strong>K=3</strong> dipilih sebagai parameter optimal karena memberikan keseimbangan terbaik antara akurasi tinggi (100%) dan generalisasi model yang matang guna mencegah resiko overfitting.
+          * Nilai <strong>K={{ $bestK }}</strong> dipilih sebagai parameter optimal karena memberikan akurasi tertinggi ({{ $bestAcc }}%) pada dataset saat ini.
         </p>
       </div>
     </div>
@@ -221,11 +177,11 @@
     <!-- TABEL 4.7 CARD (CLASSIFICATION REPORT K=3) -->
     <div class="card mb-4 shadow-sm border-left-success">
       <div class="card-header d-flex justify-content-between align-items-center bg-label-success py-3">
-        <h6 class="mb-0 fw-bold text-success"><i class="bx bx-bar-chart-alt me-1"></i> Tabel 4.7 Classification Report (K=3)</h6>
+        <h6 class="mb-0 fw-bold text-success"><i class="bx bx-bar-chart-alt me-1"></i> Tabel 4.7 Classification Report (K={{ $bestK }})</h6>
         <span class="badge bg-success">F1-Score: 1.00</span>
       </div>
       <div class="card-body pt-3">
-        <p class="small text-muted mb-2">Evaluasi Metrik Presisi, Recall, dan F1-Score untuk model optimal K=3:</p>
+        <p class="small text-muted mb-2">Evaluasi Metrik Presisi, Recall, dan F1-Score untuk model optimal K={{ $bestK }}:</p>
         <div class="table-responsive">
           <table class="table table-sm table-bordered table-hover text-center mb-0">
             <thead>

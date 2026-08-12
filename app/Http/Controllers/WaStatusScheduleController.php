@@ -81,23 +81,6 @@ class WaStatusScheduleController extends Controller
         $schedule = WaStatusSchedule::findOrFail($id);
         $waClient = new WhatsappClient();
 
-        $jids = \App\Models\Pelanggan::whereNotNull('no_wa')
-            ->get()
-            ->map(function($p) {
-                $clean = preg_replace('/[^0-9]/', '', $p->no_wa);
-                if (empty($clean)) return null;
-                if (str_starts_with($clean, '0')) {
-                    $clean = '62' . substr($clean, 1);
-                }
-                if (!str_ends_with($clean, '@s.whatsapp.net')) {
-                    $clean .= '@s.whatsapp.net';
-                }
-                return $clean;
-            })
-            ->filter()
-            ->values()
-            ->toArray();
-
         try {
             $mediaBase64 = null;
             $mimetype = 'image/jpeg';
@@ -122,7 +105,8 @@ class WaStatusScheduleController extends Controller
                 }
             }
 
-            $success = $waClient->sendStatus($schedule->content, $mediaBase64, $mimetype, $schedule->content, $jids);
+            // Passing empty array [] tells the bot to broadcast the status to ALL contacts in the phone's memory
+            $success = $waClient->sendStatus($schedule->content, $mediaBase64, $mimetype, $schedule->content, []);
 
             if ($success) {
                 $schedule->update([

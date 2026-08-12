@@ -14,6 +14,7 @@ use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ScanController;
 use App\Http\Controllers\OdcOdpController;
 use App\Http\Controllers\authentications\LoginBasic;
+use App\Http\Controllers\NotificationController;
 
 // Fallback route to serve storage files directly without depending on symlink permissions
 Route::get('storage/{folder}/{filename}', function ($folder, $filename) {
@@ -80,13 +81,28 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Intern Tasks & Kanban Board
+    Route::post('/intern/tasks/{task}/status', [DashboardController::class, 'updateInternTaskStatus'])->name('intern.tasks.update-status');
+
+    // Admin Intern Tasks Management (Protected by can:user_manage)
+    Route::middleware('can:user_manage')->group(function() {
+        Route::get('/admin/intern-tasks', [DashboardController::class, 'adminInternTasksIndex'])->name('admin.intern-tasks.index');
+        Route::post('/admin/intern-tasks', [DashboardController::class, 'adminStoreInternTask'])->name('admin.intern-tasks.store');
+        Route::put('/admin/intern-tasks/{task}', [DashboardController::class, 'adminUpdateInternTask'])->name('admin.intern-tasks.update');
+        Route::delete('/admin/intern-tasks/{task}', [DashboardController::class, 'adminDeleteInternTask'])->name('admin.intern-tasks.destroy');
+    });
+
     // Pelanggan
     Route::middleware('can:pelanggan_manage')->group(function() {
         Route::get('registrasi', [PelangganController::class, 'registrasiIndex'])->name('pelanggan.registrasi.index');
         Route::post('registrasi/{pelanggan}/send-to-group', [PelangganController::class, 'sendRegistrasiToGroup'])->name('pelanggan.registrasi.send-to-group');
         Route::get('/pelanggan/card-massal', [PelangganController::class, 'cardMassal'])->name('pelanggan.card-massal');
         Route::get('/pelanggan/export', [PelangganController::class, 'export'])->name('pelanggan.export');
-        Route::get('/pelanggan/{pelanggan}/card', [PelangganController::class, 'card'])->name('pelanggan.card');
+        Route::get('/pelanggan/get-next-code', [PelangganController::class, 'getNextCode'])->name('pelanggan.next-code');
+        Route::get('/pelanggan/monitoring', [PelangganController::class, 'monitoring'])->name('pelanggan.monitoring');
+        Route::get('/pelanggan/monitoring-data', [PelangganController::class, 'monitoringData'])->name('pelanggan.monitoring.data');
+        Route::post('/pelanggan/{pelanggan}/ping', [PelangganController::class, 'pingPelanggan'])->name('pelanggan.ping');
+        Route::get('pelanggan/{pelanggan}/delete-direct', [PelangganController::class, 'destroyDirect'])->name('pelanggan.destroy-direct');
         Route::resource('pelanggan', PelangganController::class);
         Route::resource('odc-odp', OdcOdpController::class);
         Route::post('pelanggan-import', [PelangganController::class, 'import'])->name('pelanggan.import');
@@ -100,12 +116,14 @@ Route::middleware(['auth'])->group(function () {
 
     // Customer Routes
     Route::get('my-connection', [PelangganController::class, 'myConnection'])->name('pelanggan.my-connection');
+    Route::get('/pelanggan/{pelanggan}/card', [PelangganController::class, 'card'])->name('pelanggan.card');
 
     // KNN
     Route::middleware('can:knn_process')->group(function() {
         Route::get('knn', [KnnController::class, 'index'])->name('knn.index');
         Route::post('knn/process', [KnnController::class, 'process'])->name('knn.process');
         Route::post('knn/batch', [KnnController::class, 'batchProcess'])->name('knn.batch');
+        Route::get('knn/report', [\App\Http\Controllers\KnnReportController::class, 'index'])->name('knn.report');
     });
 
     // Rute
@@ -118,11 +136,12 @@ Route::middleware(['auth'])->group(function () {
 
 
 
-    // Tiket
-    Route::middleware('can:tiket_manage')->group(function() {
-        Route::resource('tiket', TiketController::class);
-        Route::post('tiket/{tiket}/status', [TiketController::class, 'updateStatus'])->name('tiket.status');
-    });
+    // Tiket (Fine-grained role authorization is handled inside TiketController)
+    Route::resource('tiket', TiketController::class);
+    Route::post('tiket/{tiket}/status', [TiketController::class, 'updateStatus'])->name('tiket.status');
+    Route::post('tiket/{tiket}/assign-teknisi', [TiketController::class, 'assignTeknisi'])->name('tiket.assign-teknisi');
+    Route::get('tiket/{tiket}/chats', [TiketController::class, 'getChats'])->name('tiket.chats');
+    Route::post('tiket/{tiket}/chats', [TiketController::class, 'sendChat'])->name('tiket.chats.send');
 
     // Mikrotik
     Route::middleware('can:mikrotik_monitor')->group(function() {
@@ -141,7 +160,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('kas-bon', [\App\Http\Controllers\KasBonController::class, 'store'])->name('kas-bon.store');
     Route::put('kas-bon/{id}', [\App\Http\Controllers\KasBonController::class, 'update'])->name('kas-bon.update');
     Route::patch('kas-bon/{id}/pay', [\App\Http\Controllers\KasBonController::class, 'pay'])->name('kas-bon.pay');
-    Route::delete('kas-bon/{id}', [\App\Http\Controllers\KasBonController::class, 'destroy'])->name('kas-bon.destroy');
+    Route::get('kas-bon/{id}/delete', [\App\Http\Controllers\KasBonController::class, 'destroy'])->name('kas-bon.destroy');
 
     // Management Pengguna
     Route::middleware('can:user_manage')->group(function() {
@@ -152,8 +171,8 @@ Route::middleware(['auth'])->group(function () {
     // Laporan
     Route::middleware('can:report_view')->group(function() {
         Route::get('laporan', [LaporanController::class, 'index'])->name('laporan.index');
-        Route::get('laporan/tagihan', [LaporanController::class, 'tagihan'])->name('laporan.tagihan');
-        Route::get('laporan/tagihan/export', [LaporanController::class, 'exportPdf'])->name('laporan.tagihan.export');
+        Route::get('laporan/rekap-pembayaran', [LaporanController::class, 'rekapPembayaran'])->name('laporan.rekap-pembayaran');
+        Route::get('laporan/rekap-pembayaran/export-excel', [LaporanController::class, 'exportExcel'])->name('laporan.rekap-pembayaran.export-excel');
     });
 
     // Profile (All can view)
@@ -163,11 +182,14 @@ Route::middleware(['auth'])->group(function () {
     // Billing (Handled by the public proxy route above)
 
     Route::get('billing/{tagihan}/pay', [\App\Http\Controllers\PaymentController::class, 'getSnapToken'])->name('billing.pay');
+    Route::post('billing', [\App\Http\Controllers\TagihanController::class, 'store'])->name('billing.store');
     Route::post('billing/{tagihan}/confirm', [\App\Http\Controllers\TagihanController::class, 'confirmPayment'])->name('billing.confirm');
     Route::post('billing/{tagihan}/verify', [\App\Http\Controllers\TagihanController::class, 'verifikasi'])->name('billing.verify');
     Route::get('billing/sync', [\App\Http\Controllers\TagihanController::class, 'generateMonthlyBills'])->name('billing.sync');
     Route::put('billing/{tagihan}/amount', [\App\Http\Controllers\TagihanController::class, 'updateAmount'])->name('billing.amount.update');
     Route::put('billing/{tagihan}', [\App\Http\Controllers\TagihanController::class, 'update'])->name('billing.update');
+    Route::get('billing/{tagihan}/edit-bukti-bayar', [\App\Http\Controllers\TagihanController::class, 'showEditBuktiBayar'])->name('billing.edit-bukti-bayar');
+    Route::put('billing/{tagihan}/edit-bukti-bayar', [\App\Http\Controllers\TagihanController::class, 'editBuktiBayar'])->name('billing.update-bukti-bayar');
     Route::delete('billing/delete-all', [\App\Http\Controllers\TagihanController::class, 'deleteAll'])->name('billing.delete-all');
     Route::delete('billing/{tagihan}', [\App\Http\Controllers\TagihanController::class, 'destroy'])->name('billing.destroy');
     Route::get('billing/delete-all-direct', [\App\Http\Controllers\TagihanController::class, 'deleteAllDirect'])->name('billing.delete-all-direct');
@@ -175,6 +197,41 @@ Route::middleware(['auth'])->group(function () {
     Route::get('billing/{tagihan}/receipt', [\App\Http\Controllers\TagihanController::class, 'downloadReceipt'])->name('billing.receipt.pdf');
     Route::post('billing/{tagihan}/cash', [\App\Http\Controllers\TagihanController::class, 'payCash'])->name('billing.pay-cash');
     Route::post('billing/{tagihan}/send-receipt-wa', [\App\Http\Controllers\TagihanController::class, 'sendReceiptWa'])->name('billing.send-receipt-wa');
+    
+    // Upgrade Paket WiFi
+    Route::get('upgrade-paket', [\App\Http\Controllers\UpgradePaketController::class, 'index'])->name('upgrade-paket.index');
+    Route::post('upgrade-paket/request', [\App\Http\Controllers\UpgradePaketController::class, 'requestUpgrade'])->name('upgrade-paket.request');
+    Route::post('upgrade-paket/admin-upgrade', [\App\Http\Controllers\UpgradePaketController::class, 'adminUpgrade'])->name('upgrade-paket.admin-upgrade');
+    Route::post('upgrade-paket/{upgrade}/cancel', [\App\Http\Controllers\UpgradePaketController::class, 'cancelUpgrade'])->name('upgrade-paket.cancel');
+
+    // Tutorial Modem & WiFi
+    Route::get('tutorial', [\App\Http\Controllers\TutorialController::class, 'index'])->name('tutorial.index');
+    Route::get('tutorial/{tutorial:slug}', [\App\Http\Controllers\TutorialController::class, 'show'])->name('tutorial.show');
+    
+    // Admin Tutorial Management
+    Route::get('admin/tutorial', [\App\Http\Controllers\TutorialController::class, 'adminIndex'])->name('tutorial.admin.index');
+    Route::get('admin/tutorial/create', [\App\Http\Controllers\TutorialController::class, 'create'])->name('tutorial.create');
+    Route::post('admin/tutorial', [\App\Http\Controllers\TutorialController::class, 'store'])->name('tutorial.store');
+    Route::get('admin/tutorial/{tutorial}/edit', [\App\Http\Controllers\TutorialController::class, 'edit'])->name('tutorial.edit');
+    // We can use PUT/PATCH or POST
+    Route::put('admin/tutorial/{tutorial}', [\App\Http\Controllers\TutorialController::class, 'update'])->name('tutorial.update');
+    Route::delete('admin/tutorial/{tutorial}', [\App\Http\Controllers\TutorialController::class, 'destroy'])->name('tutorial.destroy');
+    Route::post('admin/tutorial/{tutorial}/toggle-publish', [\App\Http\Controllers\TutorialController::class, 'togglePublish'])->name('tutorial.toggle-publish');
+    Route::post('admin/tutorial/upload-image', [\App\Http\Controllers\TutorialController::class, 'uploadImage'])->name('tutorial.upload-image');
+
+    // Katalog Modem
+    Route::get('modem', [\App\Http\Controllers\ModemController::class, 'index'])->name('modem.index');
+    Route::get('modem/{modem}', [\App\Http\Controllers\ModemController::class, 'show'])->name('modem.show');
+
+    // Admin Modem Management
+    Route::middleware('can:pelanggan_manage')->group(function() {
+        Route::get('admin/modem', [\App\Http\Controllers\ModemController::class, 'adminIndex'])->name('modem.admin.index');
+        Route::get('admin/modem/create', [\App\Http\Controllers\ModemController::class, 'create'])->name('modem.create');
+        Route::post('admin/modem', [\App\Http\Controllers\ModemController::class, 'store'])->name('modem.store');
+        Route::get('admin/modem/{modem}/edit', [\App\Http\Controllers\ModemController::class, 'edit'])->name('modem.edit');
+        Route::put('admin/modem/{modem}', [\App\Http\Controllers\ModemController::class, 'update'])->name('modem.update');
+        Route::delete('admin/modem/{modem}', [\App\Http\Controllers\ModemController::class, 'destroy'])->name('modem.destroy');
+    });
     
     // Settings
     Route::get('settings/payment', [\App\Http\Controllers\TagihanController::class, 'settings'])->name('settings.payment');
@@ -217,12 +274,58 @@ Route::middleware(['auth'])->group(function () {
     Route::put('bot/responses/{bot}', [\App\Http\Controllers\BotResponseController::class, 'update'])->name('bot.update');
     Route::delete('bot/responses/{bot}', [\App\Http\Controllers\BotResponseController::class, 'destroy'])->name('bot.destroy');
 
+    // =========================================================
+    // Notifikasi In-App (+ SSE Real-time Stream)
+    // =========================================================
+    Route::get('notifications/stream', [NotificationController::class, 'stream'])->name('notifications.stream');
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('notifications/count', [NotificationController::class, 'count'])->name('notifications.count');
+    Route::post('notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.read-all');
+    Route::post('notifications/{notification}/read', [NotificationController::class, 'read'])->name('notifications.read');
+
+    // =========================================================
+    // Chat Inbox (Pesan Tiket Gangguan)
+    // =========================================================
+    Route::get('chat-inbox', [\App\Http\Controllers\ChatInboxController::class, 'index'])->name('chat-inbox.index');
+    Route::post('chat-inbox/read-all', [\App\Http\Controllers\ChatInboxController::class, 'readAll'])->name('chat-inbox.read-all');
+    Route::post('chat-inbox/read-tiket/{id_tiket}', [\App\Http\Controllers\ChatInboxController::class, 'readTiket'])->name('chat-inbox.read-tiket');
+
     // System Logs
     Route::get('system/logs', [\App\Http\Controllers\LogController::class, 'index'])->name('logs.index');
     Route::get('system/logs/fetch', [\App\Http\Controllers\LogController::class, 'fetch'])->name('logs.fetch');
     Route::post('system/logs/clear', [\App\Http\Controllers\LogController::class, 'clear'])->name('logs.clear');
 
+    // Kepegawaian & Absensi Pegawai
+    Route::get('absensi', [\App\Http\Controllers\AttendanceController::class, 'index'])->name('absensi.index');
+    Route::get('absensi/today', [\App\Http\Controllers\AttendanceController::class, 'today'])->name('absensi.today');
+    
+    Route::middleware('can:user_manage')->group(function() {
+        Route::get('absensi/settings', [\App\Http\Controllers\AttendanceController::class, 'showSettings'])->name('absensi.settings');
+        Route::post('absensi/settings', [\App\Http\Controllers\AttendanceController::class, 'storeSettings'])->name('absensi.settings.store');
+        Route::post('absensi/manual', [\App\Http\Controllers\AttendanceController::class, 'storeManual'])->name('absensi.store-manual');
+        Route::post('absensi/manual-batch', [\App\Http\Controllers\AttendanceController::class, 'storeManualBatch'])->name('absensi.store-manual-batch');
+        Route::post('absensi/date-schedule', [\App\Http\Controllers\AttendanceController::class, 'storeDateSchedule'])->name('absensi.date-schedule.store');
+        Route::delete('absensi/date-schedule', [\App\Http\Controllers\AttendanceController::class, 'destroyDateSchedule'])->name('absensi.date-schedule.destroy');
+        Route::post('absensi/import', [\App\Http\Controllers\AttendanceController::class, 'importCsv'])->name('absensi.import');
+        Route::get('absensi/export', [\App\Http\Controllers\AttendanceController::class, 'exportExcel'])->name('absensi.export');
+        Route::get('absensi/pdf', [\App\Http\Controllers\AttendanceController::class, 'exportPdf'])->name('absensi.pdf');
+        Route::delete('absensi/{id}', [\App\Http\Controllers\AttendanceController::class, 'destroy'])->name('absensi.destroy');
+        // Kirim rekap absensi manual via WA
+        Route::post('absensi/send-rekap', [\App\Http\Controllers\AttendanceController::class, 'sendRekapManual'])->name('absensi.send-rekap');
+
+        // Keuangan & PSB
+        Route::get('keuangan', [\App\Http\Controllers\KeuanganController::class, 'index'])->name('keuangan.index');
+        Route::post('keuangan', [\App\Http\Controllers\KeuanganController::class, 'store'])->name('keuangan.store');
+        Route::put('keuangan/{id}', [\App\Http\Controllers\KeuanganController::class, 'update'])->name('keuangan.update');
+        Route::delete('keuangan/{id}', [\App\Http\Controllers\KeuanganController::class, 'destroy'])->name('keuangan.destroy');
+    });
+
 });
+
+// ADMS (Solution X105 Fingerprint Machine Push Protocol)
+Route::any('iclock/cdata', [\App\Http\Controllers\AttendanceController::class, 'handleADMS']);
+Route::any('iclock/getrequest', [\App\Http\Controllers\AttendanceController::class, 'handleADMS']);
+Route::post('absensi/webhook', [\App\Http\Controllers\AttendanceController::class, 'handleGeneric']);
 
 // Public Wifi Registration routes (Guest access)
 Route::get('register-wifi', [\App\Http\Controllers\PublicRegistrationController::class, 'showForm'])->name('public.register');
@@ -242,8 +345,12 @@ Route::get('pay/{kode_pelanggan}', [\App\Http\Controllers\PaymentController::cla
 
 // Temporary route to get WA Groups from local bot on aaPanel
 Route::get('get-wa-groups', function() {
-    $port = 3000;
-    $secret = 'rozitech-bot-secret-2024';
+    $port = env('BOT_PORT', 3000);
+    $secret = env('BOT_SECRET'); // Ambil dari .env
+
+    if (!$secret) {
+        return response()->json(['error' => 'Bot secret not configured'], 500);
+    }
     
     // Parse .env directly in case config is cached
     if (file_exists(base_path('.env'))) {

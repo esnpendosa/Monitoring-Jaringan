@@ -11,26 +11,31 @@ class WhatsappClient
 
     public function __construct()
     {
-        $port = env('BOT_PORT', 3000);
-        $this->baseUrl = "http://127.0.0.1:$port";
+        $port = config('services.whatsapp_bot.port', env('BOT_PORT', 3000));
+        $this->baseUrl = "http://127.0.0.1:{$port}";
     }
 
     protected function secret()
     {
-        return env('BOT_SECRET', 'rozitech-bot-secret-2024');
+        // Gunakan config() agar bekerja saat config cache aktif, fallback ke env() langsung
+        return config('services.whatsapp_bot.secret', env('BOT_SECRET', 'rozitech-bot-secret-2024'));
     }
 
-    public function sendMessage($phone, $data)
+    public function sendMessage($phone, $data, $async = false)
     {
-        Log::info("WhatsappClient: Attempting to send message to $phone via " . $this->baseUrl);
+        if ($this->shouldBlockMessage($phone)) {
+            return false;
+        }
+        Log::info("WhatsappClient: Attempting to send message to $phone via " . $this->baseUrl . ($async ? " (async)" : ""));
         try {
             $message = is_array($data) ? ($data['text'] ?? '') : $data;
             
-            $response = Http::timeout(15)
+            $response = Http::timeout(5) // Kurangi timeout: jika bot mati, tidak blokir lama
                 ->withHeaders(['X-Bot-Secret' => $this->secret()])
                 ->post($this->baseUrl . '/send-message', [
                     'phone'   => $phone,
-                    'message' => $message
+                    'message' => $message,
+                    'async'   => true // Selalu async agar bot langsung balas tanpa tunggu delivery
                 ]);
 
             if (!$response->successful()) {
@@ -46,39 +51,60 @@ class WhatsappClient
         }
     }
 
-    public function sendFile($phone, $fileContent, $filename, $mimetype = 'application/pdf', $caption = '')
+    public function sendFile($phone, $fileContent, $filename, $mimetype = 'application/pdf', $caption = '', $async = false)
     {
-        Log::info("WhatsappClient: Attempting to send file $filename to $phone");
-        try {
-            $response = Http::timeout(30)
-                ->withHeaders(['X-Bot-Secret' => $this->secret()])
-                ->post($this->baseUrl . '/send-message', [
-                    'phone'    => $phone,
-                    'media'    => base64_encode($fileContent),
-                    'filename' => $filename,
-                    'mimetype' => $mimetype,
-                    'caption'  => $caption
-                ]);
-
-            return $response->successful();
-        } catch (\Exception $e) {
-            Log::error("WhatsappClient File Send Error: " . $e->getMessage());
+        if ($this->shouldBlockMessage($phone)) {
             return false;
         }
+        Log::info("WhatsappClient: Attempting to send file $filename to $phone" . ($async ? " (async)" : ""));
+        $payload = [
+            'phone'    => $phone,
+            'media'    => base64_encode($fileContent),
+            'filename' => $filename,
+            'mimetype' => $mimetype,
+            'caption'  => $caption,
+            'async'    => true, // Selalu async agar bot langsung balas tanpa tunggu delivery WA
+        ];
+
+        // Coba 2x: attempt pertama, jika gagal retry sekali lagi
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            try {
+                $response = Http::timeout(10) // Kurangi dari 90s ke 10s karena async=true
+                    ->withHeaders(['X-Bot-Secret' => $this->secret()])
+                    ->post($this->baseUrl . '/send-message', $payload);
+
+                if ($response->successful()) {
+                    Log::info("WhatsappClient: File $filename sent successfully to $phone (attempt $attempt)");
+                    return true;
+                }
+
+                Log::warning("WhatsappClient File Send attempt $attempt failed ({$response->status()}): " . $response->body());
+            } catch (\Exception $e) {
+                Log::error("WhatsappClient File Send Error (attempt $attempt): " . $e->getMessage());
+                if ($attempt === 2) return false;
+                sleep(1); // Kurangi dari 3 detik ke 1 detik
+            }
+        }
+
+        return false;
     }
 
-    public function sendFileUrl($phone, $url, $filename, $mimetype = 'application/pdf', $caption = '')
+    public function sendFileUrl($phone, $url, $filename, $mimetype = 'application/pdf', $caption = '', $async = false)
     {
-        Log::info("WhatsappClient: Attempting to send file via URL $url to $phone");
+        if ($this->shouldBlockMessage($phone)) {
+            return false;
+        }
+        Log::info("WhatsappClient: Attempting to send file via URL $url to $phone" . ($async ? " (async)" : ""));
         try {
-            $response = Http::timeout(30)
+            $response = Http::timeout(90) // Naikkan timeout untuk file besar
                 ->withHeaders(['X-Bot-Secret' => $this->secret()])
                 ->post($this->baseUrl . '/send-message', [
                     'phone'    => $phone,
                     'url'      => $url,
                     'filename' => $filename,
                     'mimetype' => $mimetype,
-                    'caption'  => $caption
+                    'caption'  => $caption,
+                    'async'    => $async
                 ]);
 
             return $response->successful();
@@ -92,6 +118,9 @@ class WhatsappClient
     {
         $pelanggan = $tagihan->pelanggan;
         if (!$pelanggan || !$pelanggan->no_wa) return false;
+        if ($this->shouldBlockMessage($pelanggan->no_wa)) {
+            return false;
+        }
 
         $monthName = date('F', mktime(0, 0, 0, $tagihan->bulan, 10));
         $amount = number_format($tagihan->jumlah, 0, ',', '.');
@@ -126,8 +155,9 @@ class WhatsappClient
 
         $caption = "Terima kasih pelanggan *{$pelanggan->kode_pelanggan}* atas pembayaran tagihan internet periode *{$monthNameIndo}* sebesar *{$amountK} ribu*. Semoga segala urusan juga rezekinya senantiasa dimudahkan dan dilancarkan selalu. Aamiin";
 
-        // Send via Base64 for better reliability
-        return $this->sendFile($pelanggan->no_wa, $pdfContent, $filename, 'application/pdf', $caption);
+        // Kirim dengan async=true agar bot langsung respond tanpa tunggu delivery WA
+        // Ini mencegah timeout saat antrian pengiriman panjang
+        return $this->sendFile($pelanggan->no_wa, $pdfContent, $filename, 'application/pdf', $caption, true);
     }
 
     public function getSessions()
@@ -144,7 +174,7 @@ class WhatsappClient
     {
         try {
             $response = Http::timeout(10)
-                ->withHeaders(['X-Bot-Secret' => env('BOT_SECRET', 'rozitech-bot-secret-2024')])
+                ->withHeaders(['X-Bot-Secret' => $this->secret()])
                 ->post($this->baseUrl . '/session/start', ['id' => $id]);
             return $response->json();
         } catch (\Exception $e) {
@@ -209,5 +239,26 @@ class WhatsappClient
             Log::error("WhatsappClient Status Connection Error: " . $e->getMessage());
             return false;
         }
+    }
+    public function shouldBlockMessage($phone)
+    {
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+        if (empty($cleanPhone)) {
+            return false;
+        }
+
+        // Try to match the customer in the database by their no_wa
+        $customer = \App\Models\Pelanggan::where(function($q) use ($cleanPhone) {
+            $q->where('no_wa', 'like', '%' . $cleanPhone . '%')
+              ->orWhere('no_wa', 'like', '%' . substr($cleanPhone, 2) . '%');
+        })->first();
+
+        // Block if customer is deactivated manually (is_active is false and is_isolated is false)
+        if ($customer && !$customer->is_active && !$customer->is_isolated) {
+            Log::info("WhatsappClient: Blocking message to manually deactivated customer: {$customer->nama_pelanggan} ({$phone})");
+            return true;
+        }
+
+        return false;
     }
 }

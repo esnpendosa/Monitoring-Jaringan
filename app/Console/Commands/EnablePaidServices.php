@@ -11,6 +11,7 @@ class EnablePaidServices extends Command
 
     public function handle(\App\Services\MikrotikService $mikrotikService)
     {
+        set_time_limit(0);
         $isForce = $this->option('force');
 
         if (!$isForce) {
@@ -27,9 +28,9 @@ class EnablePaidServices extends Command
         $currentMonth = now()->month;
         $currentYear = now()->year;
 
-        // Cari pelanggan yang tidak aktif tapi sudah tidak punya tunggakan lagi (bulan ini atau sebelumnya)
-        // Dan pastikan mereka memang memiliki tagihan aktif bulan ini (tidak dinonaktifkan secara manual/permanen tanpa tagihan)
-        $paidPelanggan = \App\Models\Pelanggan::where('is_active', false)
+        // Cari pelanggan yang terisolir tapi sudah tidak punya tunggakan lagi (bulan ini atau sebelumnya)
+        // Dan pastikan mereka memang memiliki tagihan aktif bulan ini
+        $paidPelanggan = \App\Models\Pelanggan::where('is_isolated', true)
             ->whereHas('tagihan', function ($query) use ($currentMonth, $currentYear) {
                 $query->where('tahun', $currentYear)
                       ->where('bulan', $currentMonth);
@@ -54,31 +55,43 @@ class EnablePaidServices extends Command
 
         foreach ($paidPelanggan as $p) {
             $username = $p->mikrotik_username ?: $p->kode_pelanggan;
+
+            // Selalu tandai aktif dan hilangkan status terisolir di DB terlebih dahulu
+            $p->update(['is_active' => true, 'is_isolated' => false]);
+
             if ($p->router && $username) {
-                $this->info("Mengaktifkan layanan: {$p->nama_pelanggan} ({$username})");
-                $success = $mikrotikService->setSecretStatus($p->router, $username, $p->mikrotik_type, false, $p->ip_address);
+                $this->info("Sinkronisasi MikroTik untuk: {$p->nama_pelanggan} ({$username})");
 
-                if ($success) {
-                    $p->update(['is_active' => true]);
-                    $this->info("Berhasil diaktifkan.");
+                try {
+                    $success = $mikrotikService->setSecretStatus($p->router, $username, $p->mikrotik_type, false, $p->ip_address);
 
-                    // Kirim notifikasi WA
-                    if ($p->no_wa) {
-                        try {
-                            $monthName = date('F', mktime(0, 0, 0, $currentMonth, 10));
-                            $message = "✅ *INTERNET AKTIF KEMBALI*\n\n";
-                            $message .= "Halo *{$p->nama_pelanggan}*,\n";
-                            $message .= "Pembayaran tagihan bulan *{$monthName} {$currentYear}* Anda telah dikonfirmasi.\n\n";
-                            $message .= "Internet Anda sekarang sudah *aktif kembali*. 🎉\n\n";
-                            $message .= "Terima kasih telah berlangganan layanan kami!";
-                            $waClient->sendMessage($p->no_wa, ['text' => $message]);
-                        } catch (\Exception $e) {
-                            \Illuminate\Support\Facades\Log::error('Gagal kirim notif aktivasi: ' . $e->getMessage());
+                    if ($success) {
+                        $this->info("  ✓ Berhasil disinkronkan ke MikroTik.");
+
+                        // Kirim notifikasi WA
+                        if ($p->no_wa) {
+                            try {
+                                $monthName = date('F', mktime(0, 0, 0, $currentMonth, 10));
+                                $message = "✅ *INTERNET AKTIF KEMBALI*\n\n";
+                                $message .= "Halo *{$p->nama_pelanggan}*,\n";
+                                $message .= "Pembayaran tagihan bulan *{$monthName} {$currentYear}* Anda telah dikonfirmasi.\n\n";
+                                $message .= "Internet Anda sekarang sudah *aktif kembali*. 🎉\n\n";
+                                $message .= "Terima kasih telah berlangganan layanan kami!";
+                                $waClient->sendMessage($p->no_wa, ['text' => $message], true);
+                            } catch (\Exception $e) {
+                                \Illuminate\Support\Facades\Log::error('Gagal kirim notif aktivasi: ' . $e->getMessage());
+                            }
                         }
+                    } else {
+                        $this->warn("  ⚠ MikroTik sync gagal untuk {$p->nama_pelanggan}. Status DB sudah aktif, router perlu sinkronisasi manual.");
+                        \Illuminate\Support\Facades\Log::warning("EnablePaidServices: MikroTik sync failed for {$p->kode_pelanggan} ({$username}). DB marked active, router not updated.");
                     }
-                } else {
-                    $this->error("Gagal mengaktifkan Mikrotik untuk {$p->nama_pelanggan}");
+                } catch (\Exception $e) {
+                    $this->error("  ✗ Exception MikroTik untuk {$p->nama_pelanggan}: " . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error("EnablePaidServices: Exception for {$p->kode_pelanggan}: " . $e->getMessage());
                 }
+            } else {
+                $this->info("Diaktifkan di DB (tanpa router): {$p->nama_pelanggan}");
             }
         }
 
