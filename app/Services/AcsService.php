@@ -122,6 +122,9 @@ class AcsService
                 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.ExternalIPAddress',
                 'InternetGatewayDevice.WANDevice.1.WANConnectionDevice.1.WANPPPConnection.1.Username',
                 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower',
+                'InternetGatewayDevice.WANDevice.1.X_HW_PonInterface.RXPower',
                 'VirtualParameters.RxPower',
                 'VirtualParameters.OpticalPower',
                 'InternetGatewayDevice.WANDevice.1.WANDSLInterfaceConfig.OpticalPower',
@@ -425,16 +428,22 @@ class AcsService
         $paths = [
             'VirtualParameters.RxPower._value',
             'VirtualParameters.OpticalPower._value',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterafceConfig.RXPower._value',
+            'InternetGatewayDevice.WANDevice.1.X_GponInterfaceConfig.RXPower._value',
+            'InternetGatewayDevice.WANDevice.1.X_HW_PonInterface.RXPower._value',
+            'InternetGatewayDevice.WANDevice.1.X_PON_INTERFACE.RXPower._value',
             'InternetGatewayDevice.WANDevice.1.WANDSLInterfaceConfig.OpticalPower._value',
             'InternetGatewayDevice.WANDevice.1.WANPONInterfaceConfig.RXPower._value',
             'Device.Optical.Interface.1.OpticalSignalLevel._value',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_GponInterfaceConfig.RXPower._value',
+            'InternetGatewayDevice.WANDevice.1.X_CT-COM_EponInterfaceConfig.RXPower._value',
         ];
 
         foreach ($paths as $path) {
             $val = data_get($d, $path);
-            if ($val !== null && $val !== '' && $val !== 0) {
+            if ($val !== null && $val !== '' && $val !== '0' && $val !== 0) {
                 $num = (float)$val;
-                // Convert raw integers (e.g., -2350 -> -23.5) if needed
+                // Convert raw integers if in milliwatts/microdB (e.g., -2350 -> -23.5)
                 if ($num < -100) $num = round($num / 100, 2);
                 return (string)round($num, 2);
             }
