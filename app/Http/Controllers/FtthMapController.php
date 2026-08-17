@@ -57,7 +57,7 @@ class FtthMapController extends Controller
             ->get()->map(fn($p) => [
                 'type' => 'pelanggan', 'id' => $p->id_pelanggan,
                 'nama' => $p->nama_pelanggan, 'lat' => (float)$p->latitude, 'lng' => (float)$p->longitude,
-                'status' => $p->last_online_status ?? 'online',
+                'status' => ($p->last_online_status == 1 || $p->last_online_status === 'online' || $p->last_online_status === null) ? 'online' : 'offline',
                 'kode' => $p->kode_pelanggan, 'ip_address' => $p->ip_address,
                 'serial_ont' => $p->serial_ont, 'onu_rx_power' => $p->onu_rx_power,
                 'odp_id' => $p->odp_id, 'alamat' => $p->alamat,
@@ -163,7 +163,7 @@ class FtthMapController extends Controller
                 'ip_address'         => $data['ip_address'] ?? null,
                 'no_wa'              => $data['no_wa'] ?? null,
                 'mikrotik_username'  => $data['mikrotik_username'] ?? null,
-                'last_online_status' => 'online',
+                'last_online_status' => 1,
                 'is_active'          => true,
             ]);
 
@@ -220,6 +220,10 @@ class FtthMapController extends Controller
             if ($request->has('serial_ont')) $update['serial_ont'] = $request->input('serial_ont');
             if ($request->has('no_wa')) $update['no_wa'] = $request->input('no_wa');
             if ($request->has('odp_id')) $update['odp_id'] = $request->input('odp_id');
+            if ($request->has('status')) {
+                $st = $request->input('status');
+                $update['last_online_status'] = ($st === 'online' || $st === '1' || $st === 1) ? 1 : 0;
+            }
             $node->update($update);
         } else {
             $node = OdcOdp::findOrFail($id);
