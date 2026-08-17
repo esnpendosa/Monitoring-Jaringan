@@ -1750,7 +1750,7 @@ function buildOntPopup(n, rxAwal, rxNow, rxClass) {
         <button class="p-act" onclick="copyCoords(${n.lat},${n.lng})"><i class="bx bx-copy"></i> Salin</button>
         <button class="p-act" onclick="openGoogleMaps(${n.lat},${n.lng})"><i class="bx bx-map"></i> Maps</button>
         <button class="p-act" onclick="sendWa('${String(n.no_wa||'')}','${String(n.nama||'')}')"><i class="bx bxl-whatsapp"></i> WA</button>
-        <button class="p-act edit" onclick="openEditPopup(${n.id})"><i class="bx bx-edit"></i> EDIT</button>
+        <button class="p-act edit" onclick="openEditNode('ont',${n.id})"><i class="bx bx-edit"></i> Edit / Beri Label</button>
         <button class="p-act dup" onclick="duplikatPelanggan(${n.id},'${String(n.nama||'')}')"><i class="bx bx-copy-alt"></i> DUPLIKAT</button>
       </div>
     </div>
