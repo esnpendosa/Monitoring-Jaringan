@@ -498,30 +498,31 @@ class AcsService
             }
 
             if (!empty($params)) {
-                // Clear any old pending tasks for this device first so queue is never cluttered
-                $clearNode = base_path('scratch/clear_device_tasks.cjs');
-                if (file_exists($clearNode)) {
-                    $idArg = escapeshellarg($serialId);
-                    @exec("node \"{$clearNode}\" {$idArg} >nul 2>&1");
-                }
-
                 $fullId = (strlen($serialId) < 20 && strpos($serialId, '-') === false)
                     ? "00259E-HS8145C5-{$serialId}"
                     : $serialId;
                 $encodedId = urlencode($fullId);
 
+                // Auto-clear any stuck pending tasks for this device via NBI
+                try {
+                    $tRes = Http::timeout(2)->withBasicAuth($this->user, $this->pass)->get("{$this->baseUrl}/tasks", [
+                        'query' => json_encode(['device' => $fullId])
+                    ]);
+                    if ($tRes->successful() && is_array($tRes->json())) {
+                        foreach ($tRes->json() as $oldTask) {
+                            if (!empty($oldTask['_id'])) {
+                                @Http::timeout(1)->withBasicAuth($this->user, $this->pass)->delete("{$this->baseUrl}/tasks/{$oldTask['_id']}");
+                            }
+                        }
+                    }
+                } catch (\Exception $te) {}
+
+                // Push setParameterValues task (with connection_request to trigger immediate sync)
                 @Http::timeout(3)
                     ->withBasicAuth($this->user, $this->pass)
-                    ->post("{$this->baseUrl}/devices/{$encodedId}/tasks", [
+                    ->post("{$this->baseUrl}/devices/{$encodedId}/tasks?connection_request", [
                         'name'            => 'setParameterValues',
                         'parameterValues' => $params,
-                    ]);
-
-                // Queue reboot task so physical ONT modem restarts Wi-Fi radio over the air
-                @Http::timeout(3)
-                    ->withBasicAuth($this->user, $this->pass)
-                    ->post("{$this->baseUrl}/devices/{$encodedId}/tasks", [
-                        'name' => 'reboot',
                     ]);
             }
         } catch (\Exception $e) {}
