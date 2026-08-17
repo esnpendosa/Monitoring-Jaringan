@@ -385,23 +385,46 @@ class AcsService
             }
         }
 
-        // WiFi Associated Devices
-        $assocObj = data_get($d, 'InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.AssociatedDevice');
-        if (is_array($assocObj)) {
-            foreach ($assocObj as $aItem) {
-                if (is_array($aItem) && isset($aItem['AssociatedDeviceMACAddress']['_value'])) {
-                    $mac = data_get($aItem, 'AssociatedDeviceMACAddress._value');
-                    $exists = false;
-                    foreach ($clients as $c) {
-                        if (strtolower($c['mac']) === strtolower($mac)) { $exists = true; break; }
+        // Extract Connected Associated Wi-Fi Devices across all WLAN instances (1, 2, 5)
+        for ($wIndex = 1; $wIndex <= 5; $wIndex++) {
+            $assocObj = data_get($d, "InternetGatewayDevice.LANDevice.1.WLANConfiguration.{$wIndex}.AssociatedDevice");
+            if (is_array($assocObj)) {
+                foreach ($assocObj as $aKey => $aItem) {
+                    if (is_array($aItem) && !empty($aItem['AssociatedDeviceMACAddress']['_value'])) {
+                        $mac = data_get($aItem, 'AssociatedDeviceMACAddress._value');
+                        $ip  = data_get($aItem, 'AssociatedDeviceIPAddress._value') ?: '-';
+                        $exists = false;
+                        foreach ($clients as $c) {
+                            if (strtolower($c['mac']) === strtolower($mac)) { $exists = true; break; }
+                        }
+                        if (!$exists && $mac !== '-' && $mac !== '00:00:00:00:00:00') {
+                            $clients[] = [
+                                'hostname' => 'WiFi Client (' . substr($mac, -5) . ')',
+                                'ip'       => $ip,
+                                'mac'      => $mac,
+                                'active'   => true,
+                                'type'     => ($wIndex == 5) ? 'Wi-Fi 5GHz' : 'Wi-Fi 2.4GHz',
+                            ];
+                        }
                     }
-                    if (!$exists) {
+                }
+            }
+        }
+
+        // Check if there are connected clients stored in local database if TR-069 empty
+        if (empty($clients) && \Illuminate\Support\Facades\Schema::hasTable('acs_devices')) {
+            $shortSerial = preg_replace('/^.*-/', '', $summary['serial_id'] ?? '');
+            $dbRow = DB::table('acs_devices')->where('serial_number', $summary['serial_id'] ?? '')->orWhere('serial_number', 'LIKE', "%{$shortSerial}%")->first();
+            if ($dbRow && !empty($dbRow->connected_clients)) {
+                $dbClients = json_decode($dbRow->connected_clients, true);
+                if (is_array($dbClients) && count($dbClients) > 0) {
+                    foreach ($dbClients as $dbc) {
                         $clients[] = [
-                            'hostname' => 'WiFi Client',
-                            'ip'       => data_get($aItem, 'AssociatedDeviceIPAddress._value') ?: '-',
-                            'mac'      => $mac,
+                            'hostname' => $dbc['hostname'] ?? 'Client Device',
+                            'ip'       => $dbc['ip'] ?? '-',
+                            'mac'      => $dbc['mac'] ?? '-',
                             'active'   => true,
-                            'type'     => 'Wi-Fi 2.4GHz',
+                            'type'     => $dbc['type'] ?? 'Wi-Fi',
                         ];
                     }
                 }
