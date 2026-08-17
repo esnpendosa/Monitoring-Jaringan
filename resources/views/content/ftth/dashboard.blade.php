@@ -3187,6 +3187,10 @@ function openAddPanel(type) {
     <option value="${o.id}">${o.nama || 'ODP #'+o.id}</option>
   `).join('');
 
+  var odcOptions = (DATA.odcOdps || []).filter(n => (n.tipe||'').toUpperCase() === 'ODC').map(o => `
+    <option value="${o.id}">${o.nama || 'ODC #'+o.id}</option>
+  `).join('');
+
   var extra = type==='olt'
     ? `<div class="fg"><label>IP Address</label><input id="an-ip" type="text" placeholder="192.168.1.1"></div>
        <div class="fg"><label>SNMP Community</label><input id="an-snmp" type="text" value="public"></div>
@@ -3196,7 +3200,7 @@ function openAddPanel(type) {
     : (type==='ont' || type==='pelanggan')
     ? `<div class="fg"><label>ODP Induk</label>
          <select id="an-odp-id">
-           <option value="">-- Pilih ODP --</option>
+           <option value="">-- Pilih ODP (Opsional) --</option>
            ${odpOptions}
          </select>
        </div>
@@ -3221,7 +3225,12 @@ function openAddPanel(type) {
        </div>
        <div class="fg"><label>SNMP Community (Optional)</label><input id="an-snmp" type="text" value="public"></div>`
     : `<div class="fg"><label>Kapasitas Port</label><input id="an-port" type="number" value="16"></div>
-       <div class="fg"><label>ODC Induk ID</label><input id="an-parent" type="number"></div>`;
+       <div class="fg"><label>ODC Induk</label>
+         <select id="an-odc-parent">
+           <option value="">-- Tanpa ODC Induk / Direct --</option>
+           ${odcOptions}
+         </select>
+       </div>`;
 
   el.innerHTML = `<div class="sec-hdr">TAMBAH ${title.toUpperCase()}</div>
   <div style="padding:8px;">
@@ -3261,7 +3270,8 @@ async function submitAddNode(type) {
   } else if (type==='ont' || type==='pelanggan') {
     payload.tipe='ONT';
     payload.type='ont';
-    payload.odp_id=parseInt(document.getElementById('an-odp-id')?.value||'');
+    var odpVal = document.getElementById('an-odp-id')?.value;
+    if (odpVal) payload.odp_id = parseInt(odpVal);
     payload.serial_ont=document.getElementById('an-serial')?.value||'';
     payload.ip_address=document.getElementById('an-ip')?.value||'';
     payload.no_wa=document.getElementById('an-wa')?.value||'';
@@ -3270,8 +3280,10 @@ async function submitAddNode(type) {
     payload.snmp_community=document.getElementById('an-snmp')?.value||'public';
     payload.status='online';
   } else {
-    payload.tipe='ODP'; payload.kapasitas_port=parseInt(document.getElementById('an-port')?.value||16);
-    payload.parent_id=parseInt(document.getElementById('an-parent')?.value||'');
+    payload.tipe='ODP';
+    payload.kapasitas_port=parseInt(document.getElementById('an-port')?.value||16);
+    var parentVal = document.getElementById('an-odc-parent')?.value;
+    if (parentVal) payload.parent_id = parseInt(parentVal);
   }
   var url = type==='olt' ? `${BASE}/ftth/api/olt` : type==='item' ? `${BASE}/ftth/api/items` : `${BASE}/ftth/api/node`;
   try {

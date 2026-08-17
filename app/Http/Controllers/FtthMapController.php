@@ -185,6 +185,15 @@ class FtthMapController extends Controller
             'kapasitas_core' => 'nullable|integer', 'kapasitas_port' => 'nullable|integer',
             'deskripsi' => 'nullable|string',
         ]);
+
+        // Validate foreign key existence to prevent constraint violation
+        if (!empty($data['parent_id']) && !OdcOdp::where('id', $data['parent_id'])->exists()) {
+            $data['parent_id'] = null;
+        }
+        if (!empty($data['olt_id']) && !Olt::where('id', $data['olt_id'])->exists()) {
+            $data['olt_id'] = null;
+        }
+
         $node = OdcOdp::create($data);
         return response()->json(['success' => true, 'node' => [
             'type' => strtolower($node->tipe), 'id' => $node->id,
