@@ -1620,9 +1620,28 @@ function renderItem(n) {
   var lat = parseFloat(n.latitude||n.lat), lng = parseFloat(n.longitude||n.lng);
   if (!lat||!lng) return;
   var color = ITEM_COLORS[n.kategori] || '#2563eb';
-  var m = L.circleMarker([lat,lng],{radius:5,color,fillColor:color,fillOpacity:.8,weight:1.5});
-  m.bindTooltip(String(n.nama||'Item'),{permanent:false});
+  var catName = (n.kategori || 'item').replace('_', ' ').toUpperCase();
+  
+  var m = L.circleMarker([lat,lng],{radius:6,color:color,fillColor:color,fillOpacity:.85,weight:2});
+  m.bindTooltip(`<b>${catName}</b>: ${String(n.nama||'Item')}`, {permanent:false});
+  
+  var extraInfo = `
+    <div class="p-row"><span class="lbl"><i class="bx bx-purchase-tag"></i> Kategori</span><span class="val">${catName}</span></div>
+    <div class="p-row"><span class="lbl"><i class="bx bx-map-pin"></i> Koordinat</span><span class="val mono">${lat.toFixed(6)}, ${lng.toFixed(6)}</span></div>
+  `;
+  
+  m.bindPopup(buildNodePopup({
+    id: n.id,
+    nama: n.nama || 'Item',
+    lat: lat,
+    lng: lng,
+    status: n.status || 'online',
+    type: 'item'
+  }, catName, extraInfo));
+  
+  m.on('click', () => hiSidebar('item', n.id));
   L_ITEM.addLayer(m);
+  markerReg['item_'+n.id] = m;
 }
 
 // ──────────────── POPUP BUILDERS ─────────────────────────────────────
