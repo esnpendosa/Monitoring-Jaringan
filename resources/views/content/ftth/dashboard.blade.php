@@ -345,25 +345,39 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 
 /* ── MODALS (LIGHT THEME) ───────────────── */
 .modal-backdrop{
-  position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.5);
-  backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;
+  position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.6);
+  backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:12px;
 }
 .modal-backdrop.open{display:flex;}
 .modal{
-  background:#ffffff;border:1px solid var(--bd);border-radius:12px;
-  min-width:380px;max-width:580px;width:90%;max-height:85vh;
-  display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.15);
+  background:#ffffff;border:1px solid var(--bd);border-radius:14px;
+  min-width:320px;max-width:600px;width:100%;max-height:90vh;
+  display:flex;flex-direction:column;box-shadow:0 25px 70px rgba(0,0,0,.22);
+  transition:all .2s ease;
 }
-.modal.wide{max-width:860px;}
-.modal.term{max-width:640px;}
+.modal.wide{max-width:1180px;width:96%;height:92vh;}
+.modal.fullscreen{
+  max-width:100vw !important;width:100vw !important;height:100vh !important;
+  max-height:100vh !important;border-radius:0 !important;margin:0 !important;
+}
+.modal.term{max-width:680px;}
 .m-hdr{
-  padding:14px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;
-  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 18px;border-bottom:1px solid var(--bd);background:#f8fafc;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;border-radius:14px 14px 0 0;
 }
-.m-hdr h5{font-size:13px;font-weight:700;margin:0;color:#0f172a;display:flex;align-items:center;gap:6px;}
-.m-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;}
+.modal.fullscreen .m-hdr{border-radius:0;}
+.m-hdr h5{font-size:14px;font-weight:700;margin:0;color:#0f172a;display:flex;align-items:center;gap:6px;}
+.m-icon-btn{
+  background:transparent;border:1px solid var(--bd);border-radius:6px;
+  color:var(--muted);cursor:pointer;font-size:14px;width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.m-icon-btn:hover{background:#f1f5f9;color:var(--acc);border-color:var(--acc);}
+.m-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:6px;}
+.m-close:hover{background:#fee2e2;color:#ef4444;}
 .m-body{padding:16px;overflow-y:auto;flex:1;background:#ffffff;}
-.m-foot{padding:10px 16px;border-top:1px solid var(--bd);background:#f8fafc;display:flex;gap:8px;justify-content:flex-end;}
+.m-foot{padding:10px 18px;border-top:1px solid var(--bd);background:#f8fafc;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;border-radius:0 0 14px 14px;}
+.modal.fullscreen .m-foot{border-radius:0;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
 .fg{margin-bottom:10px;}
 .fg label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;}
@@ -711,26 +725,33 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 
 <!-- GenieACS App Management Modal -->
 <div class="modal-backdrop" id="m-acs-config">
-  <div class="modal wide">
+  <div class="modal wide" id="modal-acs-container">
     <div class="m-hdr">
-      <h5><i class="bx bx-broadcast" style="color:var(--acc);"></i> GenieACS TR-069 App Manager</h5>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span id="acs-conn-status" style="font-size:11px;padding:3px 8px;border-radius:4px;background:#f1f5f9;color:var(--muted);font-weight:600;"><i class="bx bx-loader-alt bx-spin"></i> Checking NBI...</span>
-        <button class="m-close" onclick="closeModal('m-acs-config')"><i class="bx bx-x"></i></button>
+      <h5><i class="bx bx-broadcast" style="color:var(--acc);font-size:18px;"></i> GenieACS TR-069 App Manager</h5>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="acs-conn-status" style="font-size:11px;padding:4px 10px;border-radius:20px;background:#dcfce7;color:#15803d;font-weight:700;display:flex;align-items:center;gap:4px;">
+          <i class="bx bx-check-circle"></i> Connected (http://localhost:7557)
+        </span>
+        <button class="m-icon-btn" onclick="toggleModalFullscreen('modal-acs-container')" title="Layar Penuh / Fullscreen">
+          <i class="bx bx-fullscreen" id="btn-fullscreen-icon"></i>
+        </button>
+        <button class="m-close" onclick="closeModal('m-acs-config')" title="Tutup">
+          <i class="bx bx-x"></i>
+        </button>
       </div>
     </div>
-    <div class="m-body" style="padding:12px;">
-      <!-- Navigation Tabs -->
-      <div style="display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--bd);padding-bottom:6px;overflow-x:auto;">
-        <button class="tp active" id="acs-tab-ovw" onclick="switchAcsTab('ovw', this)"><i class="bx bx-pie-chart-alt-2"></i> Overview Analytics</button>
-        <button class="tp" id="acs-tab-dev" onclick="switchAcsTab('dev', this)"><i class="bx bx-devices"></i> Devices (<span id="acs-dev-cnt">0</span>)</button>
-        <button class="tp" id="acs-tab-det" onclick="switchAcsTab('det', this)"><i class="bx bx-chip"></i> Detail & Telemetri</button>
+    <div class="m-body" style="padding:14px;">
+      <!-- Navigation Tabs (Clean, Scrollable & Mobile-Responsive) -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--bd);padding-bottom:8px;overflow-x:auto;white-space:nowrap;" class="acs-nav-tabs">
+        <button class="tp active" id="acs-tab-ovw" onclick="switchAcsTab('ovw', this)"><i class="bx bx-pie-chart-alt-2"></i> Ringkasan Analytics</button>
+        <button class="tp" id="acs-tab-dev" onclick="switchAcsTab('dev', this)"><i class="bx bx-devices"></i> Daftar Modem (<span id="acs-dev-cnt">0</span>)</button>
+        <button class="tp" id="acs-tab-det" onclick="switchAcsTab('det', this)"><i class="bx bx-chip"></i> Detail & Kontrol WiFi</button>
         <button class="tp" id="acs-tab-pst" onclick="switchAcsTab('pst', this)"><i class="bx bx-slider-alt"></i> Presets</button>
         <button class="tp" id="acs-tab-prv" onclick="switchAcsTab('prv', this)"><i class="bx bx-code-alt"></i> Provisions</button>
-        <button class="tp" id="acs-tab-flt" onclick="switchAcsTab('flt', this)"><i class="bx bx-error-circle"></i> Faults Log</button>
-        <button class="tp" id="acs-tab-fls" onclick="switchAcsTab('fls', this)"><i class="bx bx-folder"></i> Files (FS)</button>
-        <button class="tp" id="acs-tab-ui3" onclick="switchAcsTab('ui3', this)"><i class="bx bx-window-open"></i> Native GenieACS UI (3000)</button>
-        <button class="tp" id="acs-tab-cfg" onclick="switchAcsTab('cfg', this)"><i class="bx bx-cog"></i> Server Config NBI</button>
+        <button class="tp" id="acs-tab-flt" onclick="switchAcsTab('flt', this)"><i class="bx bx-error-circle"></i> Log Gangguan</button>
+        <button class="tp" id="acs-tab-fls" onclick="switchAcsTab('fls', this)"><i class="bx bx-folder"></i> Firmware (FS)</button>
+        <button class="tp" id="acs-tab-ui3" onclick="switchAcsTab('ui3', this)"><i class="bx bx-window-open"></i> Native GenieACS UI</button>
+        <button class="tp" id="acs-tab-cfg" onclick="switchAcsTab('cfg', this)"><i class="bx bx-cog"></i> Pengaturan NBI</button>
       </div>
 
       <!-- Tab 0: Overview Analytics (Pie Charts matching GenieACS UI) -->
@@ -740,30 +761,30 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
             <span><i class="bx bx-pie-chart-alt-2" style="color:var(--acc);"></i> ACS-TR069 || Config & Monitoring Overview</span>
             <button class="btn-p" style="font-size:10px;padding:4px 8px;" onclick="loadAcsOverviewCharts()"><i class="bx bx-refresh"></i> Refresh Analytics</button>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;">
-            <div style="background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px;text-align:center;">
-              <h6 style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px;">Status Devices</h6>
-              <div style="height:120px;position:relative;"><canvas id="chart-acs-status"></canvas></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;">
+            <div style="background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <h6 style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">Status Devices</h6>
+              <div style="height:130px;position:relative;"><canvas id="chart-acs-status"></canvas></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px;text-align:center;">
-              <h6 style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px;">Access Type</h6>
-              <div style="height:120px;position:relative;"><canvas id="chart-acs-access"></canvas></div>
+            <div style="background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <h6 style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">Access Type</h6>
+              <div style="height:130px;position:relative;"><canvas id="chart-acs-access"></canvas></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px;text-align:center;">
-              <h6 style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px;">Optical RX Power</h6>
-              <div style="height:120px;position:relative;"><canvas id="chart-acs-rx"></canvas></div>
+            <div style="background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <h6 style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">Optical RX Power</h6>
+              <div style="height:130px;position:relative;"><canvas id="chart-acs-rx"></canvas></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px;text-align:center;">
-              <h6 style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px;">Merk Perangkat</h6>
-              <div style="height:120px;position:relative;"><canvas id="chart-acs-vendor"></canvas></div>
+            <div style="background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <h6 style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">Merk Perangkat</h6>
+              <div style="height:130px;position:relative;"><canvas id="chart-acs-vendor"></canvas></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px;text-align:center;">
-              <h6 style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px;">Optical Temperatur</h6>
-              <div style="height:120px;position:relative;"><canvas id="chart-acs-temp"></canvas></div>
+            <div style="background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <h6 style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">Optical Temperatur</h6>
+              <div style="height:130px;position:relative;"><canvas id="chart-acs-temp"></canvas></div>
             </div>
-            <div style="background:#fff;border:1px solid var(--bd);border-radius:6px;padding:10px;text-align:center;">
-              <h6 style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px;">WiFi Connected Clients</h6>
-              <div style="height:120px;position:relative;"><canvas id="chart-acs-wifi"></canvas></div>
+            <div style="background:#fff;border:1px solid var(--bd);border-radius:8px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+              <h6 style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;">WiFi Connected Clients</h6>
+              <div style="height:130px;position:relative;"><canvas id="chart-acs-wifi"></canvas></div>
             </div>
           </div>
         </div>
@@ -814,7 +835,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
           </div>
 
           <!-- Grid: Wi-Fi Config & Telemetry -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:14px;margin-bottom:14px;">
             <!-- WiFi Management Card -->
             <div style="background:#ffffff;border:1px solid var(--bd);border-radius:8px;padding:12px;">
               <div style="font-size:11px;font-weight:700;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;gap:4px;">
@@ -3160,6 +3181,22 @@ function showToast(msg, type='ok') {
   el.innerHTML = `${icon} ${msg}`;
   el.className = 'show ' + (type==='ok'?'ok':'er');
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ──────────────── MODAL FULLSCREEN HELPER ─────────────────────────────
+function toggleModalFullscreen(modalId) {
+  var m = document.getElementById(modalId);
+  var icon = document.getElementById('btn-fullscreen-icon');
+  if (!m) return;
+  if (m.classList.contains('fullscreen')) {
+    m.classList.remove('fullscreen');
+    if (icon) { icon.className = 'bx bx-fullscreen'; }
+    showToast('Tampilan normal', 'ok');
+  } else {
+    m.classList.add('fullscreen');
+    if (icon) { icon.className = 'bx bx-exit-fullscreen'; }
+    showToast('Tampilan layar penuh', 'ok');
+  }
 }
 
 // ──────────────── START ────────────────────────────────────────────────
