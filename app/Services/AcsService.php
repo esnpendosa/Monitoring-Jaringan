@@ -487,13 +487,12 @@ class AcsService
             $params = [];
 
             if ($cleanSsid) {
-                // Standard Huawei 2.4GHz WLAN parameter
+                // Standard Huawei 2.4GHz WLAN SSID
                 $params[] = ['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.SSID', $cleanSsid];
             }
 
             if ($cleanPass && strlen($cleanPass) >= 8) {
-                // Standard Huawei PreSharedKey / KeyPassphrase
-                $params[] = ['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.KeyPassphrase', $cleanPass];
+                // Standard Huawei PreSharedKey for WPA-PSK Authentication
                 $params[] = ['InternetGatewayDevice.LANDevice.1.WLANConfiguration.1.PreSharedKey.1.PreSharedKey', $cleanPass];
             }
 
