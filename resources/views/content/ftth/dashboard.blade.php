@@ -1412,7 +1412,7 @@ async function loadAll(silent = false) {
     DATA.kabels   = (nodes.kabels   || []);
     DATA.items    = (nodes.ftthItems|| []).map(normalizeNode);
 
-    renderAll();
+    renderAll(silent);
     renderSidebar();
     renderOfflinePanel();
     updateStatusBar();
@@ -1426,7 +1426,7 @@ async function loadAll(silent = false) {
     if (!silent) showToast(`Data dimuat: ${DATA.pelanggan.length} ONT, ${DATA.kabels.length} kabel`,'ok');
   } catch(e) {
     console.error('Load Error:', e);
-    showToast('Gagal memuat data: ' + e.message,'er');
+    if (!silent) showToast('Gagal memuat data: ' + e.message,'er');
     var loader = document.getElementById('app-loader');
     if (loader) loader.style.display = 'none';
   }
@@ -1443,8 +1443,14 @@ function normalizeNode(n) {
 }
 
 // ──────────────── RENDER ─────────────────────────────────────────────
-function renderAll() {
+function renderAll(silent = false) {
   try {
+    // Check if any popup is currently open so we don't close it accidentally
+    var openedPopupLatLng = null;
+    if (MAP && MAP._popup && MAP._popup.isOpen()) {
+      openedPopupLatLng = MAP._popup.getLatLng();
+    }
+
     [L_OLT,L_ODC,L_ODP,L_ONT,L_CABLE,L_LABEL,L_ITEM].forEach(l => l.clearLayers());
     markerReg = {}; kabelReg = {}; labelReg = {};
     DATA.olts.forEach(renderOlt);
@@ -1452,7 +1458,10 @@ function renderAll() {
     DATA.pelanggan.forEach(renderOnt);
     DATA.kabels.forEach(renderKabel);
     DATA.items.forEach(renderItem);
-    fitAll(true);
+    
+    if (!silent) {
+      fitAll(true);
+    }
   } catch(e) {
     console.error('Render all error:', e);
   }
@@ -1561,6 +1570,20 @@ function renderOnt(n) {
     hiSidebar('ont',n.id);
     activePopupPelanggan = n;
     setTimeout(() => initTrafficChart(n.id), 100);
+
+    // Auto-fetch live SSID & Wi-Fi details from GenieACS
+    fetch(`${BASE}/ftth/api/wifi-info/${n.id}`, {headers:{Accept:'application/json'}})
+      .then(r => r.json())
+      .then(d => {
+        var ssidEl = document.getElementById('wifi-ssid-' + n.id);
+        if (ssidEl) ssidEl.textContent = d.ssid || 'Belum diset';
+        var cliEl = document.getElementById('wifi-cli-' + n.id);
+        if (cliEl) cliEl.textContent = d.clients_count || '1 Online';
+      })
+      .catch(() => {
+        var ssidEl = document.getElementById('wifi-ssid-' + n.id);
+        if (ssidEl) ssidEl.textContent = '—';
+      });
   });
   L_ONT.addLayer(m);
   markerReg['pelanggan_'+n.id] = m;
