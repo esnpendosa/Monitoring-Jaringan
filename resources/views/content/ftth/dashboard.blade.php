@@ -1270,6 +1270,10 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
           <input id="en-lng" type="number" step="any">
         </div>
       </div>
+      <div class="fg">
+        <label><i class="bx bx-purchase-tag"></i> Label / Catatan Keterangan Alat</label>
+        <textarea id="en-catatan" rows="2" placeholder="Tuliskan keterangan detail alat/tiang/lokasi..."></textarea>
+      </div>
       <div id="en-extra-fg"></div>
     </div>
     <div class="m-foot">
@@ -1618,12 +1622,13 @@ function renderKabel(k) {
   L_CABLE.addLayer(line);
   kabelReg[k.id] = line;
 
-  // Main Cable Name Label Pill
+  // Main Cable Name Label Pill (dengan keterangan catatan jika ada)
   var midIndex = Math.floor(k.geometry.length / 2);
   var midPt = k.geometry[midIndex];
+  var catTxt = k.catatan ? `<br><small style="font-size:9px;color:#f8fafc;font-weight:400;">📝 ${k.catatan}</small>` : '';
   var labelTooltip = L.tooltip({
     permanent: true, direction: 'top', className: 'cl', interactive: false
-  }).setLatLng(midPt).setContent(`<span style="color:${color};font-weight:700;">━</span> ${k.label}`);
+  }).setLatLng(midPt).setContent(`<span style="color:${color};font-weight:700;">━</span> <b>${k.label}</b>${catTxt}`);
   labelReg[`lbl_${k.id}`] = labelTooltip;
   if (showLabels) L_LABEL.addLayer(labelTooltip);
 
@@ -1672,6 +1677,7 @@ function renderItem(n) {
   m.bindPopup(buildNodePopup({
     id: n.id,
     nama: n.nama || 'Item',
+    deskripsi: n.deskripsi || '',
     lat: lat,
     lng: lng,
     status: n.status || 'online',
@@ -1761,10 +1767,11 @@ function buildNodePopup(n, title, extra) {
     </div>
     <div class="p-body">
       ${extra}
+      ${n.deskripsi || n.catatan || n.lokasi || n.alamat ? `<div class="p-row"><span class="lbl"><i class="bx bx-purchase-tag"></i> Keterangan</span><span class="val" style="color:var(--acc);font-style:italic;">${n.deskripsi || n.catatan || n.lokasi || n.alamat}</span></div>` : ''}
       <div class="p-divider"></div>
       <div class="p-actions">
         <button class="p-act" onclick="copyCoords(${n.lat},${n.lng})"><i class="bx bx-copy"></i> Salin</button>
-        <button class="p-act edit" onclick="openEditNode('${n.type}',${n.id})"><i class="bx bx-edit"></i> Edit</button>
+        <button class="p-act edit" onclick="openEditNode('${n.type}',${n.id})"><i class="bx bx-edit"></i> Edit / Beri Label</button>
         <button class="p-act" onclick="if(confirm('Hapus?'))deleteNode('${n.type}',${n.id})"><i class="bx bx-trash"></i> Hapus</button>
       </div>
     </div>
@@ -1783,6 +1790,7 @@ function buildKabelPopup(k) {
       <div class="p-row"><span class="lbl">Monitoring</span><span class="val">${k.monitoring_type==='realtime'?'Realtime':'Manual'}</span></div>
       <div class="p-row"><span class="lbl">Core</span><span class="val">${k.jumlah_core||'—'}</span></div>
       <div class="p-row"><span class="lbl">Redaman</span><span class="val">${k.redaman_db ? k.redaman_db+' dB' : '—'}</span></div>
+      ${k.catatan ? `<div class="p-row"><span class="lbl"><i class="bx bx-purchase-tag"></i> Keterangan</span><span class="val" style="color:var(--acc);font-style:italic;">${k.catatan}</span></div>` : ''}
       ${k.titik_putus_meter ? `<div class="p-row"><span class="lbl">Titik Putus</span><span class="val" style="color:var(--red);">±${k.titik_putus_meter}m</span></div>` : ''}
       <div class="p-divider"></div>
       <div class="p-actions">
@@ -2638,6 +2646,7 @@ function openEditNode(type, id) {
   type = (type || '').toLowerCase();
   if (type === 'olt') node = DATA.olts.find(x => x.id == id);
   else if (type === 'item') node = DATA.items.find(x => x.id == id);
+  else if (type === 'ont' || type === 'pelanggan') node = DATA.pelanggan.find(x => x.id == id);
   else node = DATA.odcOdps.find(x => x.id == id);
 
   if (!node) { showToast('Data node tidak ditemukan', 'er'); return; }
@@ -2647,6 +2656,7 @@ function openEditNode(type, id) {
   document.getElementById('en-nama').value = node.nama || '';
   document.getElementById('en-lat').value = node.lat || node.latitude || '';
   document.getElementById('en-lng').value = node.lng || node.longitude || '';
+  document.getElementById('en-catatan').value = node.deskripsi || node.catatan || node.lokasi || node.alamat || '';
 
   var extraFg = document.getElementById('en-extra-fg');
   if (type === 'olt') {
@@ -2657,12 +2667,16 @@ function openEditNode(type, id) {
     extraFg.innerHTML = `<div class="fg"><label>Kapasitas Core</label><input id="en-core" type="number" value="${node.kapasitas_core||48}"></div>`;
   } else if (type === 'odp') {
     extraFg.innerHTML = `<div class="fg"><label>Kapasitas Port</label><input id="en-port" type="number" value="${node.kapasitas_port||16}"></div>`;
+  } else if (type === 'ont' || type === 'pelanggan') {
+    extraFg.innerHTML = `
+      <div class="fg"><label>Serial ONT / MAC</label><input id="en-serial" type="text" value="${node.serial_ont||''}"></div>
+      <div class="fg"><label>IP Address ONT</label><input id="en-ip" type="text" value="${node.ip_address||''}"></div>`;
   } else {
     extraFg.innerHTML = '';
   }
 
   var titleEl = document.getElementById('en-title');
-  if (titleEl) titleEl.innerHTML = `<i class="bx bx-edit"></i> Edit ${type.toUpperCase()} — ${node.nama || ''}`;
+  if (titleEl) titleEl.innerHTML = `<i class="bx bx-edit"></i> Edit / Beri Label ${type.toUpperCase()} — ${node.nama || ''}`;
 
   openModal('m-edit-node');
 }
@@ -2673,6 +2687,7 @@ async function submitUpdateNode() {
   var nama = document.getElementById('en-nama').value.trim();
   var lat = parseFloat(document.getElementById('en-lat').value);
   var lng = parseFloat(document.getElementById('en-lng').value);
+  var catatan = document.getElementById('en-catatan')?.value?.trim() || '';
 
   if (!nama) { showToast('Nama tidak boleh kosong', 'er'); return; }
 
@@ -2680,11 +2695,12 @@ async function submitUpdateNode() {
   try {
     if (type === 'item') {
       await api('POST', `${BASE}/ftth/api/items`, {
-        id: parseInt(id), nama: nama, latitude: lat, longitude: lng
+        id: parseInt(id), nama: nama, latitude: lat, longitude: lng, deskripsi: catatan
       });
     } else {
-      var payload = { type: type, nama: nama, latitude: lat, longitude: lng };
+      var payload = { type: type, nama: nama, latitude: lat, longitude: lng, deskripsi: catatan, catatan: catatan };
       if (document.getElementById('en-ip')) payload.ip_address = document.getElementById('en-ip').value;
+      if (document.getElementById('en-serial')) payload.serial_ont = document.getElementById('en-serial').value;
       if (document.getElementById('en-pon')) payload.kapasitas_pon = parseInt(document.getElementById('en-pon').value);
       if (document.getElementById('en-core')) payload.kapasitas_core = parseInt(document.getElementById('en-core').value);
       if (document.getElementById('en-port')) payload.kapasitas_port = parseInt(document.getElementById('en-port').value);
@@ -2693,7 +2709,7 @@ async function submitUpdateNode() {
     }
 
     closeModal('m-edit-node');
-    showToast(`Berhasil diubah menjadi "${nama}"!`, 'ok');
+    showToast(`Berhasil menyimpan label/keterangan "${nama}"!`, 'ok');
     loadAll(true);
   } catch(e) {
     showToast('Gagal update: ' + e.message, 'er');

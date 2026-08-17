@@ -230,6 +230,8 @@ class FtthMapController extends Controller
             if ($request->has('serial_ont')) $update['serial_ont'] = $request->input('serial_ont');
             if ($request->has('no_wa')) $update['no_wa'] = $request->input('no_wa');
             if ($request->has('odp_id')) $update['odp_id'] = $request->input('odp_id');
+            if ($request->has('deskripsi')) $update['alamat'] = $request->input('deskripsi');
+            if ($request->has('catatan')) $update['alamat'] = $request->input('catatan');
             if ($request->has('status')) {
                 $st = $request->input('status');
                 $update['last_online_status'] = ($st === 'online' || $st === '1' || $st === 1) ? 1 : 0;
