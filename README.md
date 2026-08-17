@@ -290,6 +290,12 @@ OPENROUTER_MODEL=google/gemini-flash-1.5
 MIDTRANS_SERVER_KEY=SB-Mid-server-xxxxx
 MIDTRANS_CLIENT_KEY=SB-Mid-client-xxxxx
 MIDTRANS_IS_PRODUCTION=false  # Ganti 'true' saat production
+
+# ── GenieACS TR-069 Auto Configuration Server ───────────
+GENIEACS_URL=http://127.0.0.1:7557   # Port 7557 GenieACS NBI REST API
+GENIEACS_USER=                       # Kosong jika tanpa basic auth
+GENIEACS_PASS=
+
 ```
 
 ---

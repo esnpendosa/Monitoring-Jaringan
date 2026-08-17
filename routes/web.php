@@ -3,8 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PelangganController;
-use App\Http\Controllers\KnnController;
-use App\Http\Controllers\RuteController;
+
 use App\Http\Controllers\TiketController;
 use App\Http\Controllers\MikrotikController;
 use App\Http\Controllers\UserController;
@@ -118,20 +117,61 @@ Route::middleware(['auth'])->group(function () {
     Route::get('my-connection', [PelangganController::class, 'myConnection'])->name('pelanggan.my-connection');
     Route::get('/pelanggan/{pelanggan}/card', [PelangganController::class, 'card'])->name('pelanggan.card');
 
-    // KNN
-    Route::middleware('can:knn_process')->group(function() {
-        Route::get('knn', [KnnController::class, 'index'])->name('knn.index');
-        Route::post('knn/process', [KnnController::class, 'process'])->name('knn.process');
-        Route::post('knn/batch', [KnnController::class, 'batchProcess'])->name('knn.batch');
-        Route::get('knn/report', [\App\Http\Controllers\KnnReportController::class, 'index'])->name('knn.report');
-    });
-
-    // Rute
-    Route::middleware('can:rute_manage')->group(function() {
-        Route::get('rute', [RuteController::class, 'index'])->name('rute.index');
-        Route::post('rute/generate', [RuteController::class, 'generate'])->name('rute.generate');
-        Route::get('rute/{rute}', [RuteController::class, 'show'])->name('rute.show');
-        Route::post('rute-detail/{detail}/status', [RuteController::class, 'updateDetailStatus'])->name('rute.detail.status');
+    // Jaringan FTTH
+    Route::middleware('can:pelanggan_manage')->group(function() {
+        Route::resource('kabel', \App\Http\Controllers\KabelController::class);
+        Route::post('kabel/{kabel}/status', [\App\Http\Controllers\KabelController::class, 'updateStatus'])->name('kabel.status');
+        Route::get('kabel-geojson', [\App\Http\Controllers\KabelController::class, 'geojson'])->name('kabel.geojson');
+        Route::resource('olt', \App\Http\Controllers\OltController::class);
+        Route::get('ftth/map', [\App\Http\Controllers\FtthMapController::class, 'index'])->name('ftth.map');
+        Route::get('ftth', [\App\Http\Controllers\FtthMapController::class, 'dashboard'])->name('ftth.dashboard');
+        // FTTH API — nodes existing
+        Route::get('ftth/api/nodes', [\App\Http\Controllers\FtthMapController::class, 'apiNodes'])->name('ftth.api.nodes');
+        Route::post('ftth/api/olt', [\App\Http\Controllers\FtthMapController::class, 'storeOlt'])->name('ftth.api.olt.store');
+        Route::post('ftth/api/node', [\App\Http\Controllers\FtthMapController::class, 'storeNode'])->name('ftth.api.node.store');
+        Route::put('ftth/api/node/{id}', [\App\Http\Controllers\FtthMapController::class, 'updateNode'])->name('ftth.api.node.update');
+        Route::delete('ftth/api/node/{type}/{id}', [\App\Http\Controllers\FtthMapController::class, 'deleteNode'])->name('ftth.api.node.delete');
+        Route::post('ftth/api/kabel', [\App\Http\Controllers\FtthMapController::class, 'storeKabel'])->name('ftth.api.kabel.store');
+        Route::put('ftth/api/kabel/{kabel}', [\App\Http\Controllers\FtthMapController::class, 'updateKabel'])->name('ftth.api.kabel.update');
+        Route::delete('ftth/api/kabel/{kabel}', [\App\Http\Controllers\FtthMapController::class, 'deleteKabel'])->name('ftth.api.kabel.delete');
+        // FTTH Items — Tiang Tumpu, Joint Closure, HTB, AP, Server/Router, dst
+        Route::get('ftth/api/items', [\App\Http\Controllers\FtthItemController::class, 'apiItems'])->name('ftth.api.items');
+        Route::post('ftth/api/items', [\App\Http\Controllers\FtthItemController::class, 'store'])->name('ftth.api.items.store');
+        Route::put('ftth/api/items/{ftthItem}', [\App\Http\Controllers\FtthItemController::class, 'update'])->name('ftth.api.items.update');
+        Route::delete('ftth/api/items/{ftthItem}', [\App\Http\Controllers\FtthItemController::class, 'destroy'])->name('ftth.api.items.destroy');
+        Route::post('ftth/api/items/auto-generate-tiang', [\App\Http\Controllers\FtthItemController::class, 'autoGenerateTiang'])->name('ftth.api.items.auto-tiang');
+        // KMZ Export / Import
+        Route::get('ftth/export-kmz', [\App\Http\Controllers\FtthItemController::class, 'exportKmz'])->name('ftth.export.kmz');
+        Route::post('ftth/import-kmz', [\App\Http\Controllers\FtthItemController::class, 'importKmz'])->name('ftth.import.kmz');
+        // Advanced Features
+        Route::post('ftth/api/redaman-calc', [\App\Http\Controllers\FtthAdvancedController::class, 'kalkulatorRedaman'])->name('ftth.api.redaman');
+        Route::get('ftth/api/redaman-calc/{pelanggan}', [\App\Http\Controllers\FtthAdvancedController::class, 'kalkulatorRedamanPelanggan'])->name('ftth.api.redaman.pelanggan');
+        Route::get('ftth/api/wifi-info/{pelanggan}', [\App\Http\Controllers\FtthAdvancedController::class, 'getWifiInfo'])->name('ftth.api.wifi-info');
+        Route::post('ftth/api/set-wifi/{pelanggan}', [\App\Http\Controllers\FtthAdvancedController::class, 'setWifi'])->name('ftth.api.set-wifi');
+        Route::post('ftth/api/reboot-ont/{pelanggan}', [\App\Http\Controllers\FtthAdvancedController::class, 'rebootOnt'])->name('ftth.api.reboot-ont');
+        Route::post('ftth/api/ping', [\App\Http\Controllers\FtthAdvancedController::class, 'ping'])->name('ftth.api.ping');
+        Route::get('ftth/api/data-table', [\App\Http\Controllers\FtthAdvancedController::class, 'dataTable'])->name('ftth.api.data-table');
+        Route::get('ftth/export-csv', [\App\Http\Controllers\FtthAdvancedController::class, 'exportCsv'])->name('ftth.export.csv');
+        Route::post('ftth/api/set-baseline/{pelanggan}', [\App\Http\Controllers\FtthAdvancedController::class, 'setBaseline'])->name('ftth.api.set-baseline');
+        Route::post('ftth/api/duplicate-pelanggan/{pelanggan}', [\App\Http\Controllers\FtthAdvancedController::class, 'duplicatePelanggan'])->name('ftth.api.duplicate');
+        Route::post('ftth/api/sync-now', [\App\Http\Controllers\FtthAdvancedController::class, 'syncNow'])->name('ftth.api.sync-now');
+        // GenieACS Full App Management Routes
+        Route::get('ftth/api/acs/test', [\App\Http\Controllers\FtthAdvancedController::class, 'testAcsConnection'])->name('ftth.api.acs.test');
+        Route::post('ftth/api/acs/config', [\App\Http\Controllers\FtthAdvancedController::class, 'saveAcsSettings'])->name('ftth.api.acs.config');
+        Route::get('ftth/api/acs/devices', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsDevices'])->name('ftth.api.acs.devices');
+        Route::get('ftth/api/acs/devices/{serialId}', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsDeviceDetail'])->where('serialId', '.*')->name('ftth.api.acs.device-detail');
+        Route::post('ftth/api/acs/devices/{serialId}/wifi', [\App\Http\Controllers\FtthAdvancedController::class, 'setAcsWifi'])->where('serialId', '.*')->name('ftth.api.acs.set-wifi');
+        Route::post('ftth/api/acs/devices/{serialId}/reboot', [\App\Http\Controllers\FtthAdvancedController::class, 'rebootAcsDevice'])->where('serialId', '.*')->name('ftth.api.acs.reboot');
+        Route::post('ftth/api/acs/devices/{serialId}/pppoe', [\App\Http\Controllers\FtthAdvancedController::class, 'setAcsPppoe'])->where('serialId', '.*')->name('ftth.api.acs.set-pppoe');
+        Route::post('ftth/api/acs/devices/{serialId}/factory-reset', [\App\Http\Controllers\FtthAdvancedController::class, 'factoryResetAcsDevice'])->where('serialId', '.*')->name('ftth.api.acs.factory-reset');
+        Route::post('ftth/api/acs/devices/{serialId}/refresh', [\App\Http\Controllers\FtthAdvancedController::class, 'refreshAcsDevice'])->where('serialId', '.*')->name('ftth.api.acs.refresh');
+        Route::delete('ftth/api/acs/devices/{serialId}', [\App\Http\Controllers\FtthAdvancedController::class, 'deleteAcsDevice'])->where('serialId', '.*')->name('ftth.api.acs.delete-device');
+        Route::get('ftth/api/acs/presets', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsPresets'])->name('ftth.api.acs.presets');
+        Route::get('ftth/api/acs/provisions', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsProvisions'])->name('ftth.api.acs.provisions');
+        Route::get('ftth/api/acs/faults', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsFaults'])->name('ftth.api.acs.faults');
+        Route::get('ftth/api/acs/files', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsFiles'])->name('ftth.api.acs.files');
+        Route::match(['GET','POST'], 'ftth/settings/telegram', [\App\Http\Controllers\FtthAdvancedController::class, 'telegramSettings'])->name('ftth.settings.telegram');
+        Route::post('ftth/settings/telegram/test', [\App\Http\Controllers\FtthAdvancedController::class, 'telegramTest'])->name('ftth.settings.telegram.test');
     });
 
 

@@ -53,29 +53,25 @@
       "permission": "pelanggan_manage"
     },
     {
-      "menuHeader": "Analisis & Optimasi",
-      "permission": "knn_process"
+      "url": "/ftth",
+      "name": "FTTH Network Manager",
+      "icon": "menu-icon icon-base bx bx-map-pin",
+      "slug": "ftth",
+      "permission": "pelanggan_manage"
     },
     {
-      "url": "/knn",
-      "name": "Klasifikasi Prioritas",
-      "icon": "menu-icon icon-base bx bx-brain",
-      "slug": "knn",
-      "permission": "knn_process"
+      "url": "/olt",
+      "name": "Manajemen OLT",
+      "icon": "menu-icon icon-base bx bx-server",
+      "slug": "olt",
+      "permission": "pelanggan_manage"
     },
     {
-      "url": "/knn/report",
-      "name": "Laporan KNN",
-      "icon": "menu-icon icon-base bx bx-file",
-      "slug": "knn.report",
-      "permission": "knn_process"
-    },
-    {
-      "url": "/rute",
-      "name": "Optimasi Rute",
-      "icon": "menu-icon icon-base bx bx-navigation",
-      "slug": "rute",
-      "permission": "rute_manage"
+      "url": "/kabel",
+      "name": "Manajemen Kabel",
+      "icon": "menu-icon icon-base bx bx-cable-car",
+      "slug": "kabel",
+      "permission": "pelanggan_manage"
     },
     {
       "menuHeader": "Operasional"

@@ -21,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
       $schedule->command('bot:goodbye')->everyMinute()->withoutOverlapping();
       $schedule->command('status:publish')->everyMinute()->withoutOverlapping();
       $schedule->command('attendance:send-monthly-recap')->monthlyOn(10, '09:00')->withoutOverlapping();
+      // FTTH: Sync ACS + Poll RFTS + Inferensi gangguan kabel setiap 5 menit
+      $schedule->command('ftth:poll-status')->everyFiveMinutes()->withoutOverlapping();
   })
   ->withMiddleware(function (Middleware $middleware) {
       $middleware->validateCsrfTokens(except: [
@@ -32,6 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
           '/iclock/*',
           'absensi/webhook',
           '/absensi/webhook',
+          'ftth/api/*',
+          '/ftth/api/*',
       ]);
 
       $middleware->web(append: [

@@ -15,6 +15,7 @@ class Pelanggan extends Model
     protected $fillable = [
         'id_user',
         'id_router',
+        'odp_id',
         'kode_pelanggan',
         'nama_pelanggan',
         'email',
@@ -39,11 +40,21 @@ class Pelanggan extends Model
         'foto_rumah',
         'tanggal_pasang',
         'gratis_pemasangan',
+        'serial_ont',
+        'onu_rx_power',
+        'baseline_rx_power',
+        'baseline_set_at',
+        'last_inform_at',
     ];
 
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id');
+    }
+
+    public function odp()
+    {
+        return $this->belongsTo(OdcOdp::class, 'odp_id');
     }
 
     public function router()

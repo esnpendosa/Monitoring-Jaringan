@@ -45,7 +45,7 @@
             <option value="Medium">Medium</option>
             <option value="High">High</option>
           </select>
-          <small class="text-muted">Prioritas otomatis terisi berdasarkan hasil klasifikasi KNN terakhir.</small>
+          <small class="text-muted">Pilih prioritas sesuai tingkat urgensi gangguan.</small>
         </div>
 
         <div class="mb-3">
