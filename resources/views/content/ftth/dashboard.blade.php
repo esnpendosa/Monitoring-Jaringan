@@ -1454,6 +1454,39 @@ function normalizeNode(n) {
 
 // ──────────────── RENDER ─────────────────────────────────────────────
 function renderAll(silent = false) {
+  try {
+    [L_OLT,L_ODC,L_ODP,L_ONT,L_CABLE,L_LABEL,L_ITEM].forEach(l => l.clearLayers());
+    markerReg = {}; kabelReg = {}; labelReg = {};
+    DATA.olts.forEach(renderOlt);
+    DATA.odcOdps.forEach(n => (n.tipe||'').toUpperCase() === 'ODC' ? renderOdc(n) : renderOdp(n));
+    DATA.pelanggan.forEach(renderOnt);
+    DATA.kabels.forEach(renderKabel);
+    DATA.items.forEach(renderItem);
+    
+    if (!silent) {
+      fitAll(true);
+    }
+  } catch(e) {
+    console.error('Render all error:', e);
+  }
+}
+
+function colorOf(status) {
+  status = String(status || 'online');
+  return {online:'#16a34a',warning:'#d97706',offline:'#dc2626'}[status] || '#64748b';
+}
+function wtOf(tipe) { return {feeder:6,distribusi:4,drop:2}[String(tipe||'distribusi')] || 4; }
+
+function makeIcon(boxClass, iconClass, size) {
+  size = size || 34;
+  return L.divIcon({
+    className:'',
+    html:`<div class="gis-marker ${boxClass}" style="width:${size}px;height:${size}px;">
+            <i class="${iconClass}"></i>
+          </div>`,
+    iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2+2],
+  });
+}
 // ODP YELLOW BOX MARKER WITH NAME PILL
 function makeOdpIcon(status, pelCount, maxPort, name, desc) {
   var stClass = status === 'offline' ? 'off' : status === 'warning' ? 'wa' : '';
