@@ -960,17 +960,44 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
         </div>
       </div>
 
-      <!-- Tab 6: Files FS -->
+      <!-- Tab 6: Files FS (Firmware & Configuration Storage) -->
       <div id="acs-sec-fls" class="acs-sec" style="display:none;">
+        <div style="background:#f8fafc;border:1px solid var(--bd);border-radius:8px;padding:12px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+            <i class="bx bx-cloud-upload" style="color:var(--acc);font-size:16px;"></i> Unggah File Firmware / Config Baru ke GenieACS FS
+          </div>
+          <form id="form-upload-acs-file" onsubmit="submitAcsFileUpload(event)" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)) auto;gap:8px;align-items:end;">
+            <div class="fg" style="margin:0;">
+              <label style="font-size:10px;">Pilih File (Firmware / XML Config)</label>
+              <input type="file" id="acs-file-input" required style="padding:4px;font-size:11px;">
+            </div>
+            <div class="fg" style="margin:0;">
+              <label style="font-size:10px;">Tipe File</label>
+              <select id="acs-file-type" style="padding:5px;font-size:11px;">
+                <option value="1 Firmware Upgrade Image">1 Firmware Upgrade Image</option>
+                <option value="3 Vendor Configuration File">3 Vendor Configuration File</option>
+                <option value="X_CUSTOM_ConfigFile">Custom Configuration File</option>
+              </select>
+            </div>
+            <div class="fg" style="margin:0;">
+              <label style="font-size:10px;">Versi (Opsional)</label>
+              <input type="text" id="acs-file-ver" placeholder="v1.0.0" style="padding:5px;font-size:11px;">
+            </div>
+            <button type="submit" class="btn-p" style="font-size:11px;padding:7px 14px;background:#16a34a;height:32px;">
+              <i class="bx bx-upload"></i> Unggah File
+            </button>
+          </form>
+        </div>
+
         <div style="display:flex;justify-content:space-between;margin-bottom:10px;align-items:center;">
-          <h6 style="font-size:12px;font-weight:700;margin:0;"><i class="bx bx-folder" style="color:var(--acc);"></i> Firmware & Configuration Files (FS)</h6>
+          <h6 style="font-size:12px;font-weight:700;margin:0;"><i class="bx bx-folder" style="color:var(--acc);"></i> Daftar File Terdaftar di GenieACS FS</h6>
           <button class="btn-p" style="font-size:10px;padding:4px 8px;" onclick="loadAcsFiles()"><i class="bx bx-refresh"></i> Refresh Files</button>
         </div>
         <div class="tbl-wrap" style="max-height:300px;">
           <table style="width:100%;font-size:11px;">
-            <thead><tr><th>File Name</th><th>FileType</th><th>Version</th></tr></thead>
+            <thead><tr><th>File Name</th><th>FileType</th><th>Version</th><th style="width:70px;text-align:center;">Aksi</th></tr></thead>
             <tbody id="acs-fls-tbody">
-              <tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted);">Klik Refresh untuk memuat daftar Files...</td></tr>
+              <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">Klik Refresh untuk memuat daftar Files...</td></tr>
             </tbody>
           </table>
         </div>
@@ -1930,25 +1957,90 @@ async function loadAcsFaults() {
 
 async function loadAcsFiles() {
   var tbody = document.getElementById('acs-fls-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:10px;"><i class="bx bx-loader-alt bx-spin"></i> Memuat Files FS...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:10px;"><i class="bx bx-loader-alt bx-spin"></i> Memuat Files FS...</td></tr>';
   try {
     var res = await fetch(`${BASE}/ftth/api/acs/files`, {headers:{Accept:'application/json'}});
     var json = await res.json();
     var list = json.files || [];
     if (!list.length) {
-      if (tbody) tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:20px;color:var(--muted);">Belum ada File Firmware/Config terdaftar di GenieACS FS.</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">Belum ada File Firmware/Config terdaftar di GenieACS FS.</td></tr>';
       return;
     }
     if (tbody) {
-      tbody.innerHTML = list.map(f => `
+      tbody.innerHTML = list.map(f => {
+        var fname = f._id || f.filename || '-';
+        return `
         <tr>
-          <td><b>${f._id || f.filename || '-'}</b></td>
+          <td><b>${fname}</b></td>
           <td><code>${f.metadata?.fileType || f.metadata?.type || '-'}</code></td>
           <td><small>${f.metadata?.version || '-'}</small></td>
-        </tr>`).join('');
+          <td style="text-align:center;">
+            <button class="p-act" style="padding:2px 6px;font-size:9px;color:var(--red);margin:0 auto;" onclick="deleteAcsFileDirect('${fname}')" title="Hapus File"><i class="bx bx-trash"></i></button>
+          </td>
+        </tr>`;
+      }).join('');
     }
   } catch(e) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="3" style="text-align:center;padding:10px;color:var(--red);">Error: ${e.message}</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:10px;color:var(--red);">Error: ${e.message}</td></tr>`;
+  }
+}
+
+async function submitAcsFileUpload(e) {
+  e.preventDefault();
+  var fileInput = document.getElementById('acs-file-input');
+  var typeInput = document.getElementById('acs-file-type');
+  var verInput  = document.getElementById('acs-file-ver');
+
+  if (!fileInput || !fileInput.files.length) {
+    showToast('Pilih file firmware / konfigurasi terlebih dahulu', 'er');
+    return;
+  }
+
+  var file = fileInput.files[0];
+  var formData = new FormData();
+  formData.append('file', file);
+  formData.append('file_type', typeInput?.value || '1 Firmware Upgrade Image');
+  formData.append('version', verInput?.value || '1.0.0');
+
+  showToast('Mengunggah ' + file.name + ' ke GenieACS FS...', 'ok');
+
+  try {
+    var res = await fetch(`${BASE}/ftth/api/acs/files`, {
+      method: 'POST',
+      headers: {
+        'X-CSRF-TOKEN': CSRF,
+        'Accept': 'application/json',
+      },
+      body: formData,
+    });
+    var json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || 'Gagal upload file');
+
+    showToast(json.message || 'File berhasil diunggah ke GenieACS FS!', 'ok');
+    fileInput.value = '';
+    loadAcsFiles();
+  } catch (err) {
+    showToast('Upload Error: ' + err.message, 'er');
+  }
+}
+
+async function deleteAcsFileDirect(filename) {
+  if (!confirm(`Hapus file "${filename}" dari GenieACS FS?`)) return;
+  showToast('Menghapus ' + filename + '...', 'ok');
+  try {
+    var res = await fetch(`${BASE}/ftth/api/acs/files/${encodeURIComponent(filename)}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-TOKEN': CSRF,
+        'Accept': 'application/json',
+      }
+    });
+    var json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.message || 'Gagal hapus file');
+    showToast(json.message || 'File berhasil dihapus!', 'ok');
+    loadAcsFiles();
+  } catch (err) {
+    showToast('Gagal hapus: ' + err.message, 'er');
   }
 }
 

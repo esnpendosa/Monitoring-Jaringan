@@ -852,13 +852,51 @@ class AcsService
     }
 
     /**
+     * Upload File (Firmware / Config) to GenieACS FS
+     */
+    public function uploadFile(string $filename, string $fileType, ?string $version, $fileContent): bool
+    {
+        try {
+            $encodedName = urlencode($filename);
+            $query = http_build_query([
+                'fileType' => $fileType,
+                'version'  => $version ?: '1.0.0',
+            ]);
+
+            $res = Http::withBody($fileContent, 'application/octet-stream')
+                ->withBasicAuth($this->user, $this->pass)
+                ->put("{$this->baseUrl}/files/{$encodedName}?{$query}");
+
+            if ($res->successful()) return true;
+        } catch (\Exception $e) {}
+
+        // Local DB sync
+        if (\Illuminate\Support\Facades\Schema::hasTable('acs_files')) {
+            DB::table('acs_files')->updateOrInsert(['filename' => $filename], [
+                'file_type'  => $fileType,
+                'version'    => $version ?: '1.0.0',
+                'updated_at' => now(),
+            ]);
+        }
+
+        return true;
+    }
+
+    /**
      * Delete File
      */
     public function deleteFile(string $name): bool
     {
         try {
-            DB::table('acs_files')->where('filename', $name)->delete();
+            $encodedName = urlencode($name);
+            @Http::timeout(3)->withBasicAuth($this->user, $this->pass)->delete("{$this->baseUrl}/files/{$encodedName}");
         } catch (\Exception $e) {}
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('acs_files')) {
+            try {
+                DB::table('acs_files')->where('filename', $name)->delete();
+            } catch (\Exception $e) {}
+        }
         return true;
     }
 }

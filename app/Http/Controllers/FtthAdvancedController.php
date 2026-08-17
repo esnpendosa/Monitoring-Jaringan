@@ -463,6 +463,48 @@ class FtthAdvancedController extends Controller
         return response()->json(['success' => true, 'files' => $acs->getFiles()]);
     }
 
+    /**
+     * Upload File Firmware/Config ke GenieACS FS
+     * POST /ftth/api/acs/files
+     */
+    public function uploadAcsFile(Request $request)
+    {
+        $request->validate([
+            'file'      => 'required|file',
+            'file_type' => 'required|string',
+            'version'   => 'nullable|string',
+        ]);
+
+        $uploaded = $request->file('file');
+        $filename = $uploaded->getClientOriginalName();
+        $fileType = $request->input('file_type');
+        $version  = $request->input('version', '1.0.0');
+        $content  = file_get_contents($uploaded->getRealPath());
+
+        $acs = app(AcsService::class);
+        $ok = $acs->uploadFile($filename, $fileType, $version, $content);
+
+        return response()->json([
+            'success' => $ok,
+            'message' => $ok ? "File {$filename} berhasil diunggah ke GenieACS FS!" : "Gagal mengunggah file.",
+        ]);
+    }
+
+    /**
+     * Hapus File Firmware/Config dari GenieACS FS
+     * DELETE /ftth/api/acs/files/{filename}
+     */
+    public function deleteAcsFile($filename)
+    {
+        $acs = app(AcsService::class);
+        $ok = $acs->deleteFile($filename);
+
+        return response()->json([
+            'success' => $ok,
+            'message' => $ok ? "File {$filename} berhasil dihapus dari GenieACS FS." : "Gagal menghapus file.",
+        ]);
+    }
+
     // ═══════════════════════════════════════════════════════
     //  3. IN-MAPS PING TERMINAL
     // ═══════════════════════════════════════════════════════

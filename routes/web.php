@@ -170,6 +170,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('ftth/api/acs/provisions', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsProvisions'])->name('ftth.api.acs.provisions');
         Route::get('ftth/api/acs/faults', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsFaults'])->name('ftth.api.acs.faults');
         Route::get('ftth/api/acs/files', [\App\Http\Controllers\FtthAdvancedController::class, 'getAcsFiles'])->name('ftth.api.acs.files');
+        Route::post('ftth/api/acs/files', [\App\Http\Controllers\FtthAdvancedController::class, 'uploadAcsFile'])->name('ftth.api.acs.upload-file');
+        Route::delete('ftth/api/acs/files/{filename}', [\App\Http\Controllers\FtthAdvancedController::class, 'deleteAcsFile'])->where('filename', '.*')->name('ftth.api.acs.delete-file');
         Route::match(['GET','POST'], 'ftth/settings/telegram', [\App\Http\Controllers\FtthAdvancedController::class, 'telegramSettings'])->name('ftth.settings.telegram');
         Route::post('ftth/settings/telegram/test', [\App\Http\Controllers\FtthAdvancedController::class, 'telegramTest'])->name('ftth.settings.telegram.test');
     });
