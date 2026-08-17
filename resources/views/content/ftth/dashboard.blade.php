@@ -3204,8 +3204,8 @@ function openAddPanel(type) {
            ${odpOptions}
          </select>
        </div>
-       <div class="fg"><label>Serial ONT / MAC (TR-069)</label><input id="an-serial" type="text" placeholder="48575443A3F1A89D"></div>
-       <div class="fg"><label>IP Address ONT</label><input id="an-ip" type="text" placeholder="192.168.88.253"></div>
+       <div class="fg"><label>Serial ONT / MAC (TR-069)</label><input id="an-serial" type="text" value="48575443A3F1A89D" placeholder="48575443A3F1A89D"></div>
+       <div class="fg"><label>IP Address ONT</label><input id="an-ip" type="text" value="192.168.88.253" placeholder="192.168.88.253"></div>
        <div class="fg"><label>Nomor WhatsApp Pelanggan</label><input id="an-wa" type="text" placeholder="081234567890"></div>`
     : type==='item'
     ? `<div class="fg"><label>Kategori Item (11 Kategori)</label>

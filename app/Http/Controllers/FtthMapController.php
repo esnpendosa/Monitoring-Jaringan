@@ -151,16 +151,18 @@ class FtthMapController extends Controller
                 'ip_address'        => 'nullable|string',
                 'no_wa'             => 'nullable|string',
                 'mikrotik_username' => 'nullable|string',
+                'alamat'            => 'nullable|string',
             ]);
 
             $pelanggan = Pelanggan::create([
                 'nama_pelanggan'     => $data['nama'],
                 'kode_pelanggan'     => 'ONT-' . strtoupper(substr(uniqid(), -5)),
+                'alamat'             => $data['alamat'] ?? 'Lokasi Terdaftar FTTH Map',
                 'latitude'           => $data['latitude'],
                 'longitude'          => $data['longitude'],
                 'odp_id'             => $data['odp_id'] ?? null,
-                'serial_ont'         => $data['serial_ont'] ?? null,
-                'ip_address'         => $data['ip_address'] ?? null,
+                'serial_ont'         => $data['serial_ont'] ?? '48575443A3F1A89D',
+                'ip_address'         => $data['ip_address'] ?? '192.168.88.253',
                 'no_wa'              => $data['no_wa'] ?? null,
                 'mikrotik_username'  => $data['mikrotik_username'] ?? null,
                 'last_online_status' => 1,
