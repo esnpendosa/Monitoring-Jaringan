@@ -447,22 +447,32 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 #toast.ok{border-color:rgba(22,163,74,.4);color:var(--green);}
 #toast.er{border-color:rgba(220,38,38,.4);color:var(--red);}
 
-/* Leaflet tooltip cable & distance pills (LIGHT THEME) */
+/* Leaflet tooltip cable & distance pills (CLEAN PROFESSIONAL GIS) */
 .leaflet-tooltip.cl{
-  background:#ffffff!important;border:1px solid #cbd5e1!important;
-  color:#0f172a!important;font-size:9px!important;font-family:'Inter',sans-serif!important;
-  padding:2px 6px!important;border-radius:4px!important;white-space:nowrap!important;
-  box-shadow:0 2px 8px rgba(0,0,0,.1)!important;
+  background:#ffffff!important;
+  border:1px solid #cbd5e1!important;
+  color:#1e293b!important;
+  font-size:9.5px!important;
+  font-family:'Inter',system-ui,sans-serif!important;
+  padding:3px 8px!important;
+  border-radius:4px!important;
+  white-space:nowrap!important;
+  box-shadow:0 2px 6px rgba(0,0,0,.08)!important;
+  line-height:1.3!important;
 }
 .leaflet-tooltip.cl::before{display:none!important;}
 
 .cable-dist-pill{
   background:#ffffff!important;
-  border:1px solid #f59e0b!important;
-  color:#b45309!important;font-size:9px!important;font-weight:700!important;
-  padding:1px 5px!important;border-radius:4px!important;white-space:nowrap!important;
-  box-shadow:0 2px 6px rgba(0,0,0,.12)!important;
-  font-family:'Inter',sans-serif!important;
+  border:1px solid #cbd5e1!important;
+  color:#475569!important;
+  font-size:8.5px!important;
+  font-weight:600!important;
+  padding:1px 4px!important;
+  border-radius:3px!important;
+  white-space:nowrap!important;
+  box-shadow:0 1px 4px rgba(0,0,0,.06)!important;
+  font-family:'Inter',system-ui,sans-serif!important;
 }
 .cable-dist-pill::before{display:none!important;}
 
@@ -479,7 +489,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 /* CUSTOM GIS MARKERS (LIGHT THEME) */
 .gis-marker{
   display:flex;align-items:center;justify-content:center;
-  border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25);
+  border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.15);
   border:2px solid #ffffff;cursor:pointer;
   transition:transform .15s;
 }
@@ -506,11 +516,30 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   box-shadow:0 3px 10px rgba(0,0,0,.15);cursor:pointer;
 }
 
+/* PROFESSIONAL UNIFIED NODE LABEL PILL */
 .node-label-pill{
-  background:#ffffff;border:1px solid #cbd5e1;
-  color:#0f172a;font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;
-  white-space:nowrap;text-align:center;margin-top:3px;
-  box-shadow:0 2px 6px rgba(0,0,0,.12);font-family:'Inter',sans-serif;
+  background:#ffffff;
+  border:1px solid #cbd5e1;
+  color:#0f172a;
+  font-size:9.5px;
+  font-weight:600;
+  padding:2px 6px;
+  border-radius:4px;
+  white-space:nowrap;
+  text-align:center;
+  margin-top:3px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+  font-family:'Inter',system-ui,sans-serif;
+  line-height:1.2;
+}
+.node-label-pill .sub-desc{
+  display:block;
+  font-size:8px;
+  font-weight:400;
+  color:#64748b;
+  margin-top:1px;
+  border-top:1px dashed #e2e8f0;
+  padding-top:1px;
 }
 .node-sublabel-pill{
   background:#0f172a;border:1px solid #334155;
@@ -1491,7 +1520,7 @@ function makeIcon(boxClass, iconClass, size) {
 function makeOdpIcon(status, pelCount, maxPort, name, desc) {
   var stClass = status === 'offline' ? 'off' : status === 'warning' ? 'wa' : '';
   var txt = maxPort ? `${pelCount}/${maxPort}` : String(pelCount);
-  var descHtml = desc ? `<div class="node-sublabel-pill">📝 ${desc}</div>` : '';
+  var descHtml = desc ? `<span class="sub-desc">${desc}</span>` : '';
   return L.divIcon({
     className:'',
     html:`<div style="display:flex;flex-direction:column;align-items:center;">
@@ -1499,41 +1528,39 @@ function makeOdpIcon(status, pelCount, maxPort, name, desc) {
               <i class="bx bx-git-repo-forked" style="font-size:16px;"></i>
               <span class="odp-num">${txt}</span>
             </div>
-            ${name ? `<div class="node-label-pill">${name}</div>` : ''}
-            ${descHtml}
+            ${name ? `<div class="node-label-pill">${name}${descHtml}</div>` : ''}
           </div>`,
-    iconSize:[70, desc ? 68 : 54],iconAnchor:[35,18],popupAnchor:[0,-20],
+    iconSize:[70, desc ? 56 : 48],iconAnchor:[35,18],popupAnchor:[0,-20],
   });
 }
 
 // ODC ORANGE BOX MARKER WITH NAME PILL
 function makeOdcIcon(status, core, name, desc) {
-  var descHtml = desc ? `<div class="node-sublabel-pill">📝 ${desc}</div>` : '';
+  var descHtml = desc ? `<span class="sub-desc">${desc}</span>` : '';
   return L.divIcon({
     className:'',
     html:`<div style="display:flex;flex-direction:column;align-items:center;">
             <div class="odc-box-marker">
               <i class="bx bx-cube-alt" style="font-size:18px;"></i>
             </div>
-            ${name ? `<div class="node-label-pill">${name}</div>` : ''}
-            ${descHtml}
+            ${name ? `<div class="node-label-pill">${name}${descHtml}</div>` : ''}
           </div>`,
-    iconSize:[70, desc ? 68 : 54],iconAnchor:[35,18],popupAnchor:[0,-20],
+    iconSize:[70, desc ? 56 : 48],iconAnchor:[35,18],popupAnchor:[0,-20],
   });
 }
 
 function renderOlt(n) {
   if (!n.lat || !n.lng) return;
-  var descHtml = (n.deskripsi || n.lokasi || n.catatan) ? `<div class="node-sublabel-pill">📝 ${n.deskripsi || n.lokasi || n.catatan}</div>` : '';
+  var desc = n.deskripsi || n.lokasi || n.catatan || '';
+  var descHtml = desc ? `<span class="sub-desc">${desc}</span>` : '';
   var m = L.marker([n.lat,n.lng],{
     icon:L.divIcon({
       className:'',
       html:`<div style="display:flex;flex-direction:column;align-items:center;">
               <div class="gis-marker olt" style="width:38px;height:38px;"><i class="bx bx-server"></i></div>
-              <div class="node-label-pill">${n.nama||'OLT'}</div>
-              ${descHtml}
+              <div class="node-label-pill">${n.nama||'OLT'}${descHtml}</div>
             </div>`,
-      iconSize:[80, descHtml ? 68 : 54],iconAnchor:[40,19],popupAnchor:[0,-22]
+      iconSize:[80, desc ? 58 : 50],iconAnchor:[40,19],popupAnchor:[0,-22]
     }),
     draggable:true
   });
@@ -1570,17 +1597,17 @@ function renderOnt(n) {
   if (!n.lat || !n.lng) return;
   var isOnline = n.status === 'online';
   var stClass = isOnline ? 'ont' : 'ont off';
-  var descHtml = (n.alamat && n.alamat !== 'Lokasi Terdaftar FTTH Map') ? `<div class="node-sublabel-pill">📝 ${n.alamat}</div>` : '';
+  var desc = (n.alamat && n.alamat !== 'Lokasi Terdaftar FTTH Map') ? n.alamat : '';
+  var descHtml = desc ? `<span class="sub-desc">${desc}</span>` : '';
   
   var m = L.marker([n.lat,n.lng],{
     icon:L.divIcon({
       className:'',
       html:`<div style="display:flex;flex-direction:column;align-items:center;">
               <div class="gis-marker ${stClass}" style="width:30px;height:30px;"><i class="bx bx-wifi"></i></div>
-              <div class="node-label-pill">${n.nama||'ONT'}</div>
-              ${descHtml}
+              <div class="node-label-pill">${n.nama||'ONT'}${descHtml}</div>
             </div>`,
-      iconSize:[70, descHtml ? 58 : 46],iconAnchor:[35,15],popupAnchor:[0,-18]
+      iconSize:[70, desc ? 50 : 42],iconAnchor:[35,15],popupAnchor:[0,-18]
     }),
     draggable:true
   });
@@ -1651,17 +1678,15 @@ function renderKabel(k) {
     totalMeters += Math.round(ptA.distanceTo(ptB));
   }
 
-  // Main Cable Name Label Pill (dengan keterangan catatan & total jarak rapi)
+  // Main Cable Name Label Pill (Clean Enterprise Style)
   var midIndex = Math.floor(k.geometry.length / 2);
   var midPt = k.geometry[midIndex];
-  var catTxt = k.catatan ? `<div style="font-size:9px;color:#38bdf8;font-weight:500;margin-top:2px;">📝 ${k.catatan}</div>` : '';
+  var catTxt = k.catatan ? `<span class="sub-desc" style="color:#64748b;font-weight:400;">${k.catatan}</span>` : '';
   var labelTooltip = L.tooltip({
     permanent: true, direction: 'top', className: 'cl', interactive: false
   }).setLatLng(midPt).setContent(`
-    <div style="text-align:center;">
-      <div style="font-weight:700;color:${color};display:flex;align-items:center;justify-content:center;gap:4px;">
-        <span>━</span> ${k.label} <span style="background:rgba(255,255,255,.2);padding:1px 4px;border-radius:3px;font-size:9px;color:#0f172a;">${totalMeters}m</span>
-      </div>
+    <div style="text-align:center;line-height:1.2;">
+      <span style="font-weight:700;color:${color};">━</span> <b>${k.label}</b> · <span style="color:#64748b;font-size:8.5px;">${totalMeters}m</span>
       ${catTxt}
     </div>
   `);
