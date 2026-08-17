@@ -750,7 +750,6 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
         <button class="tp" id="acs-tab-prv" onclick="switchAcsTab('prv', this)"><i class="bx bx-code-alt"></i> Provisions</button>
         <button class="tp" id="acs-tab-flt" onclick="switchAcsTab('flt', this)"><i class="bx bx-error-circle"></i> Log Gangguan</button>
         <button class="tp" id="acs-tab-fls" onclick="switchAcsTab('fls', this)"><i class="bx bx-folder"></i> Firmware (FS)</button>
-        <button class="tp" id="acs-tab-ui3" onclick="switchAcsTab('ui3', this)"><i class="bx bx-window-open"></i> Native GenieACS UI</button>
         <button class="tp" id="acs-tab-cfg" onclick="switchAcsTab('cfg', this)"><i class="bx bx-cog"></i> Pengaturan NBI</button>
       </div>
 
@@ -1000,21 +999,6 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
               <tr><td colspan="4" style="text-align:center;padding:20px;color:var(--muted);">Klik Refresh untuk memuat daftar Files...</td></tr>
             </tbody>
           </table>
-        </div>
-      </div>
-
-      <!-- Tab Native GenieACS UI (Port 3000 iFrame) -->
-      <div id="acs-sec-ui3" class="acs-sec" style="display:none;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-          <div style="font-size:11px;font-weight:600;color:var(--muted);">
-            Embedded GenieACS Web Dashboard (Port 3000)
-          </div>
-          <button class="btn-p" style="font-size:10px;padding:4px 10px;" onclick="window.open('http://localhost:3000', '_blank')">
-            <i class="bx bx-export"></i> Buka di Tab Baru (http://localhost:3000)
-          </button>
-        </div>
-        <div style="height:480px;border:1px solid var(--bd);border-radius:8px;overflow:hidden;">
-          <iframe id="genieacs-ui-iframe" src="http://localhost:3000" style="width:100%;height:100%;border:none;"></iframe>
         </div>
       </div>
 
