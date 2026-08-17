@@ -55,12 +55,20 @@ class FtthMapController extends Controller
         $pelanggan = Pelanggan::whereNotNull('latitude')->whereNotNull('longitude')
             ->with('odp')
             ->get()->map(fn($p) => [
-                'type' => 'pelanggan', 'id' => $p->id_pelanggan,
-                'nama' => $p->nama_pelanggan, 'lat' => (float)$p->latitude, 'lng' => (float)$p->longitude,
-                'status' => ($p->last_online_status == 1 || $p->last_online_status === 'online' || $p->last_online_status === null) ? 'online' : 'offline',
-                'kode' => $p->kode_pelanggan, 'ip_address' => $p->ip_address,
-                'serial_ont' => $p->serial_ont, 'onu_rx_power' => $p->onu_rx_power,
-                'odp_id' => $p->odp_id, 'alamat' => $p->alamat,
+                'type'             => 'pelanggan',
+                'id'               => $p->id_pelanggan,
+                'nama'             => $p->nama_pelanggan,
+                'lat'              => (float)$p->latitude,
+                'lng'              => (float)$p->longitude,
+                'status'           => ($p->last_online_status == 1 || $p->last_online_status === 'online' || $p->last_online_status === null) ? 'online' : 'offline',
+                'kode'             => $p->kode_pelanggan,
+                'ip_address'       => $p->ip_address,
+                'serial_ont'       => $p->serial_ont,
+                'onu_rx_power'     => $p->onu_rx_power,
+                'onu_rx_baseline'  => $p->baseline_rx_power ?: -19.5,
+                'last_inform_at'   => $p->last_inform_at ? $p->last_inform_at->toIso8601String() : now()->toIso8601String(),
+                'odp_id'           => $p->odp_id,
+                'alamat'           => $p->alamat,
             ]);
 
         $kabels = Kabel::all()->map(fn($k) => [

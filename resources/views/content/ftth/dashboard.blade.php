@@ -1579,6 +1579,21 @@ function renderOnt(n) {
         if (ssidEl) ssidEl.textContent = d.ssid || 'Belum diset';
         var cliEl = document.getElementById('wifi-cli-' + n.id);
         if (cliEl) cliEl.textContent = d.clients_count || '1 Online';
+        
+        // Update live RX Power in popup if returned
+        if (d.rx_power) {
+          var rxNowEl = document.getElementById('rx-now-' + n.id);
+          if (rxNowEl) {
+            rxNowEl.textContent = d.rx_power + ' dBm';
+            rxNowEl.className = 'r-val ' + rxColorClass(d.rx_power);
+          }
+        }
+
+        // Update live ACS Uptime status if returned
+        if (d.uptime && d.uptime !== '-') {
+          var upEl = document.getElementById('acs-up-' + n.id);
+          if (upEl) upEl.textContent = 'Aktif · Up: ' + d.uptime;
+        }
       })
       .catch(() => {
         var ssidEl = document.getElementById('wifi-ssid-' + n.id);
@@ -1695,17 +1710,17 @@ function buildOntPopup(n, rxAwal, rxNow, rxClass) {
         <button class="ping-btn" onclick="quickPing('${n.ip_address||''}', '${n.id}')"><i class="bx bx-pulse"></i> Ping</button>
       </div>
       <div class="p-row"><span class="lbl"><i class="bx bx-broadcast"></i> ACS Status</span>
-        <span class="val ${isOnline?'on':'off'}">${isOnline ? 'Aktif · Up: '+uptime : 'Offline · Mati: '+uptime}</span>
+        <span class="val ${isOnline?'on':'off'}" id="acs-up-${n.id}">${isOnline ? 'Aktif · Up: '+uptime : 'Offline · Mati: '+uptime}</span>
       </div>
       <div class="p-divider"></div>
       <div class="p-redaman-row">
         <div class="p-redaman-box">
           <div class="r-lbl">Redaman Awal</div>
-          <div class="r-val ${rxColorClass(n.onu_rx_baseline)}">${rxAwal}</div>
+          <div class="r-val ${rxColorClass(n.onu_rx_baseline || -19.5)}" id="rx-base-${n.id}">${rxAwal}</div>
         </div>
         <div class="p-redaman-box">
           <div class="r-lbl">Redaman Skrg</div>
-          <div class="r-val ${rxClass}">${rxNow}</div>
+          <div class="r-val ${rxClass}" id="rx-now-${n.id}">${rxNow}</div>
         </div>
       </div>
       <div class="p-wifi-row"><span class="lbl"><i class="bx bx-wifi"></i> SSID</span><span class="val" id="wifi-ssid-${n.id}">Memuat...</span></div>
