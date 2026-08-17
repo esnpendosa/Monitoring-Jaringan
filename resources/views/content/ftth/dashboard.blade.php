@@ -532,14 +532,18 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   font-family:'Inter',system-ui,sans-serif;
   line-height:1.2;
 }
-.node-label-pill .sub-desc{
+.sub-desc{
   display:block;
-  font-size:8px;
+  font-size:8.5px;
   font-weight:400;
   color:#64748b;
-  margin-top:1px;
+  margin-top:2px;
   border-top:1px dashed #e2e8f0;
-  padding-top:1px;
+  padding-top:2px;
+  max-width:160px;
+  white-space:normal;
+  word-break:break-word;
+  line-height:1.2;
 }
 .node-sublabel-pill{
   background:#0f172a;border:1px solid #334155;
@@ -1678,15 +1682,19 @@ function renderKabel(k) {
     totalMeters += Math.round(ptA.distanceTo(ptB));
   }
 
-  // Main Cable Name Label Pill (Clean Enterprise Style)
+  // Main Cable Name Label Pill (Clean Structured 2-Line Enterprise Style)
   var midIndex = Math.floor(k.geometry.length / 2);
   var midPt = k.geometry[midIndex];
-  var catTxt = k.catatan ? `<span class="sub-desc" style="color:#64748b;font-weight:400;">${k.catatan}</span>` : '';
+  var catTxt = k.catatan ? `<div class="sub-desc">${k.catatan}</div>` : '';
   var labelTooltip = L.tooltip({
     permanent: true, direction: 'top', className: 'cl', interactive: false
   }).setLatLng(midPt).setContent(`
-    <div style="text-align:center;line-height:1.2;">
-      <span style="font-weight:700;color:${color};">━</span> <b>${k.label}</b> · <span style="color:#64748b;font-size:8.5px;">${totalMeters}m</span>
+    <div style="text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
+        <span style="color:${color};font-weight:800;font-size:11px;">━</span>
+        <b style="color:#0f172a;font-size:9.5px;">${k.label}</b>
+        <span style="color:#64748b;font-size:8.5px;font-weight:500;">(${totalMeters}m)</span>
+      </div>
       ${catTxt}
     </div>
   `);
