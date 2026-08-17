@@ -1038,10 +1038,11 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   <div class="modal">
     <div class="m-hdr"><h5><i class="bx bx-devices"></i> Manajemen Perangkat FTTH</h5><button class="m-close" onclick="closeModal('m-perangkat')"><i class="bx bx-x"></i></button></div>
     <div class="m-body">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
-        <button class="btn-p" onclick="openAddPanel('olt');closeModal('m-perangkat');" style="padding:14px;justify-content:center;flex-direction:column;gap:6px;"><i class="bx bx-server" style="font-size:22px;"></i> Tambah OLT</button>
-        <button class="btn-p" style="background:#f97316;padding:14px;justify-content:center;flex-direction:column;gap:6px;" onclick="openAddPanel('odc');closeModal('m-perangkat');"><i class="bx bx-cube-alt" style="font-size:22px;"></i> Tambah ODC</button>
-        <button class="btn-p" style="background:#eab308;padding:14px;justify-content:center;flex-direction:column;gap:6px;" onclick="openAddPanel('odp');closeModal('m-perangkat');"><i class="bx bx-box" style="font-size:22px;"></i> Tambah ODP</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+        <button class="btn-p" onclick="openAddPanel('olt');closeModal('m-perangkat');" style="padding:14px 8px;justify-content:center;flex-direction:column;gap:6px;"><i class="bx bx-server" style="font-size:22px;"></i> Tambah OLT</button>
+        <button class="btn-p" style="background:#f97316;padding:14px 8px;justify-content:center;flex-direction:column;gap:6px;" onclick="openAddPanel('odc');closeModal('m-perangkat');"><i class="bx bx-cube-alt" style="font-size:22px;"></i> Tambah ODC</button>
+        <button class="btn-p" style="background:#eab308;padding:14px 8px;justify-content:center;flex-direction:column;gap:6px;" onclick="openAddPanel('odp');closeModal('m-perangkat');"><i class="bx bx-box" style="font-size:22px;"></i> Tambah ODP</button>
+        <button class="btn-p" style="background:#16a34a;padding:14px 8px;justify-content:center;flex-direction:column;gap:6px;" onclick="openAddPanel('ont');closeModal('m-perangkat');"><i class="bx bx-home-alt" style="font-size:22px;"></i> Tambah ONT</button>
       </div>
     </div>
     <div class="m-foot"><button class="btn-s" onclick="closeModal('m-perangkat')">Tutup</button></div>
@@ -3013,7 +3014,7 @@ function renderSidebar() {
 
 function renderList(cid, items, type, iconClass, nameFn) {
   var el = document.getElementById(cid); if (!el) return;
-  var addType = {'olt':'OLT','odc':'ODC','odp':'ODP'}[type];
+  var addType = {'olt':'OLT','odc':'ODC','odp':'ODP','pelanggan':'ONT / Pelanggan','ont':'ONT'}[type];
   var hdr = addType ? `<div class="sec-hdr">${addType}<button class="add-btn" onclick="openAddPanel('${type}')"><i class="bx bx-plus"></i> Tambah</button></div>` : '';
   if (!items.length) {
     el.innerHTML = hdr + '<div style="padding:10px 8px;color:var(--muted);font-size:11px;">Belum ada data.</div>';
@@ -3175,17 +3176,33 @@ function updateStatusBar() {
   if (notifTxt) notifTxt.textContent = `${offCnt} ONT berstatus OFFLINE. Cek daftar di panel kanan.`;
 }
 
-// ──────────────── OPEN ADD PANEL (11 CATEGORIES SUPPORT) ──────────────
+// ──────────────── OPEN ADD PANEL (11 CATEGORIES & ONT SUPPORT) ─────────
 function openAddPanel(type) {
-  switchTabByEl(type === 'item' ? 'item' : type);
-  var el = document.getElementById('tc-'+type); if (!el) return;
-  var title = {olt:'OLT',odc:'ODC',odp:'ODP',item:'Item Jaringan'}[type] || 'Perangkat';
+  var targetTab = (type === 'item') ? 'item' : (type === 'ont' || type === 'pelanggan') ? 'ont' : type;
+  switchTabByEl(targetTab);
+  var el = document.getElementById('tc-' + targetTab); if (!el) return;
+  var title = {olt:'OLT',odc:'ODC',odp:'ODP',ont:'ONT / Pelanggan',pelanggan:'ONT / Pelanggan',item:'Item Jaringan'}[type] || 'Perangkat';
+
+  var odpOptions = (DATA.odcOdps || []).filter(n => (n.tipe||'').toUpperCase() === 'ODP').map(o => `
+    <option value="${o.id}">${o.nama || 'ODP #'+o.id}</option>
+  `).join('');
+
   var extra = type==='olt'
-    ? `<div class="fg"><label>IP Address</label><input id="an-ip" type="text"></div>
+    ? `<div class="fg"><label>IP Address</label><input id="an-ip" type="text" placeholder="192.168.1.1"></div>
        <div class="fg"><label>SNMP Community</label><input id="an-snmp" type="text" value="public"></div>
        <div class="fg"><label>Kapasitas PON</label><input id="an-pon" type="number" value="16"></div>`
     : type==='odc'
     ? `<div class="fg"><label>Kapasitas Core</label><input id="an-core" type="number" value="48"></div>`
+    : (type==='ont' || type==='pelanggan')
+    ? `<div class="fg"><label>ODP Induk</label>
+         <select id="an-odp-id">
+           <option value="">-- Pilih ODP --</option>
+           ${odpOptions}
+         </select>
+       </div>
+       <div class="fg"><label>Serial ONT / MAC (TR-069)</label><input id="an-serial" type="text" placeholder="48575443A3F1A89D"></div>
+       <div class="fg"><label>IP Address ONT</label><input id="an-ip" type="text" placeholder="192.168.88.253"></div>
+       <div class="fg"><label>Nomor WhatsApp Pelanggan</label><input id="an-wa" type="text" placeholder="081234567890"></div>`
     : type==='item'
     ? `<div class="fg"><label>Kategori Item (11 Kategori)</label>
          <select id="an-cat">
@@ -3208,7 +3225,7 @@ function openAddPanel(type) {
 
   el.innerHTML = `<div class="sec-hdr">TAMBAH ${title.toUpperCase()}</div>
   <div style="padding:8px;">
-    <div class="fg"><label>Nama Perangkat/Item</label><input id="an-nama" type="text" placeholder="${title} baru..."></div>
+    <div class="fg"><label>Nama Pelanggan / Perangkat</label><input id="an-nama" type="text" placeholder="${title} baru..."></div>
     ${extra}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
       <div class="fg"><label>Latitude</label><input id="an-lat" type="number" step="any"></div>
@@ -3241,6 +3258,13 @@ async function submitAddNode(type) {
     payload.kapasitas_pon=parseInt(document.getElementById('an-pon')?.value||16);
   } else if (type==='odc') {
     payload.tipe='ODC'; payload.kapasitas_core=parseInt(document.getElementById('an-core')?.value||48);
+  } else if (type==='ont' || type==='pelanggan') {
+    payload.tipe='ONT';
+    payload.type='ont';
+    payload.odp_id=parseInt(document.getElementById('an-odp-id')?.value||'');
+    payload.serial_ont=document.getElementById('an-serial')?.value||'';
+    payload.ip_address=document.getElementById('an-ip')?.value||'';
+    payload.no_wa=document.getElementById('an-wa')?.value||'';
   } else if (type==='item') {
     payload.kategori=document.getElementById('an-cat')?.value||'tiang_tumpu';
     payload.snmp_community=document.getElementById('an-snmp')?.value||'public';

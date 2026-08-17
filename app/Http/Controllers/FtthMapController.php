@@ -137,9 +137,47 @@ class FtthMapController extends Controller
         ]]);
     }
 
-    /** Simpan node ODC/ODP baru */
+    /** Simpan node ODC/ODP/ONT baru */
     public function storeNode(Request $request)
     {
+        $tipe = strtoupper($request->input('tipe', ''));
+        if ($tipe === 'ONT' || $tipe === 'PELANGGAN' || $request->input('type') === 'ont') {
+            $data = $request->validate([
+                'nama'              => 'required|string|max:255',
+                'latitude'          => 'required|numeric',
+                'longitude'         => 'required|numeric',
+                'odp_id'            => 'nullable|integer',
+                'serial_ont'        => 'nullable|string',
+                'ip_address'        => 'nullable|string',
+                'no_wa'             => 'nullable|string',
+                'mikrotik_username' => 'nullable|string',
+            ]);
+
+            $pelanggan = Pelanggan::create([
+                'nama_pelanggan'     => $data['nama'],
+                'kode_pelanggan'     => 'ONT-' . strtoupper(substr(uniqid(), -5)),
+                'latitude'           => $data['latitude'],
+                'longitude'          => $data['longitude'],
+                'odp_id'             => $data['odp_id'] ?? null,
+                'serial_ont'         => $data['serial_ont'] ?? null,
+                'ip_address'         => $data['ip_address'] ?? null,
+                'no_wa'              => $data['no_wa'] ?? null,
+                'mikrotik_username'  => $data['mikrotik_username'] ?? null,
+                'last_online_status' => 'online',
+                'is_active'          => true,
+            ]);
+
+            return response()->json(['success' => true, 'node' => [
+                'type' => 'pelanggan',
+                'id'   => $pelanggan->id_pelanggan,
+                'nama' => $pelanggan->nama_pelanggan,
+                'kode' => $pelanggan->kode_pelanggan,
+                'lat'  => (float)$pelanggan->latitude,
+                'lng'  => (float)$pelanggan->longitude,
+                'status' => 'online',
+            ]]);
+        }
+
         $data = $request->validate([
             'tipe' => 'required|in:ODC,ODP', 'nama' => 'required|string|max:255',
             'latitude' => 'required|numeric', 'longitude' => 'required|numeric',
@@ -156,13 +194,24 @@ class FtthMapController extends Controller
         ]]);
     }
 
-    /** Update node OLT atau ODC/ODP */
+    /** Update node OLT, ODC/ODP, atau ONT/Pelanggan */
     public function updateNode(Request $request, $id)
     {
         $type = $request->input('type', 'odc');
         if ($type === 'olt') {
             $node = Olt::findOrFail($id);
             $node->update($request->only(['nama','ip_address','snmp_community','kapasitas_pon','lokasi','status','latitude','longitude']));
+        } elseif ($type === 'ont' || $type === 'pelanggan') {
+            $node = Pelanggan::findOrFail($id);
+            $update = [];
+            if ($request->has('nama')) $update['nama_pelanggan'] = $request->input('nama');
+            if ($request->has('latitude')) $update['latitude'] = $request->input('latitude');
+            if ($request->has('longitude')) $update['longitude'] = $request->input('longitude');
+            if ($request->has('ip_address')) $update['ip_address'] = $request->input('ip_address');
+            if ($request->has('serial_ont')) $update['serial_ont'] = $request->input('serial_ont');
+            if ($request->has('no_wa')) $update['no_wa'] = $request->input('no_wa');
+            if ($request->has('odp_id')) $update['odp_id'] = $request->input('odp_id');
+            $node->update($update);
         } else {
             $node = OdcOdp::findOrFail($id);
             $node->update($request->only(['nama','status','kapasitas_core','kapasitas_port','deskripsi','latitude','longitude','olt_id','parent_id']));
@@ -174,6 +223,7 @@ class FtthMapController extends Controller
     public function deleteNode(Request $request, $type, $id)
     {
         if ($type === 'olt') Olt::findOrFail($id)->delete();
+        elseif ($type === 'ont' || $type === 'pelanggan') Pelanggan::findOrFail($id)->delete();
         else OdcOdp::findOrFail($id)->delete();
         return response()->json(['success' => true]);
     }
