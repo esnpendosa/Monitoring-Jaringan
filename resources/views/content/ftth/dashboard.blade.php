@@ -512,6 +512,12 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   white-space:nowrap;text-align:center;margin-top:3px;
   box-shadow:0 2px 6px rgba(0,0,0,.12);font-family:'Inter',sans-serif;
 }
+.node-sublabel-pill{
+  background:#0f172a;border:1px solid #334155;
+  color:#38bdf8;font-size:8.5px;font-weight:600;padding:1px 5px;border-radius:3px;
+  white-space:nowrap;text-align:center;margin-top:2px;
+  box-shadow:0 2px 5px rgba(0,0,0,.18);font-family:'Inter',sans-serif;
+}
 </style>
 <body>
 
@@ -1448,50 +1454,11 @@ function normalizeNode(n) {
 
 // ──────────────── RENDER ─────────────────────────────────────────────
 function renderAll(silent = false) {
-  try {
-    // Check if any popup is currently open so we don't close it accidentally
-    var openedPopupLatLng = null;
-    if (MAP && MAP._popup && MAP._popup.isOpen()) {
-      openedPopupLatLng = MAP._popup.getLatLng();
-    }
-
-    [L_OLT,L_ODC,L_ODP,L_ONT,L_CABLE,L_LABEL,L_ITEM].forEach(l => l.clearLayers());
-    markerReg = {}; kabelReg = {}; labelReg = {};
-    DATA.olts.forEach(renderOlt);
-    DATA.odcOdps.forEach(n => (n.tipe||'').toUpperCase() === 'ODC' ? renderOdc(n) : renderOdp(n));
-    DATA.pelanggan.forEach(renderOnt);
-    DATA.kabels.forEach(renderKabel);
-    DATA.items.forEach(renderItem);
-    
-    if (!silent) {
-      fitAll(true);
-    }
-  } catch(e) {
-    console.error('Render all error:', e);
-  }
-}
-
-function colorOf(status) {
-  status = String(status || 'online');
-  return {online:'#16a34a',warning:'#d97706',offline:'#dc2626'}[status] || '#64748b';
-}
-function wtOf(tipe) { return {feeder:6,distribusi:4,drop:2}[String(tipe||'distribusi')] || 4; }
-
-function makeIcon(boxClass, iconClass, size) {
-  size = size || 34;
-  return L.divIcon({
-    className:'',
-    html:`<div class="gis-marker ${boxClass}" style="width:${size}px;height:${size}px;">
-            <i class="${iconClass}"></i>
-          </div>`,
-    iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2+2],
-  });
-}
-
 // ODP YELLOW BOX MARKER WITH NAME PILL
-function makeOdpIcon(status, pelCount, maxPort, name) {
+function makeOdpIcon(status, pelCount, maxPort, name, desc) {
   var stClass = status === 'offline' ? 'off' : status === 'warning' ? 'wa' : '';
   var txt = maxPort ? `${pelCount}/${maxPort}` : String(pelCount);
+  var descHtml = desc ? `<div class="node-sublabel-pill">📝 ${desc}</div>` : '';
   return L.divIcon({
     className:'',
     html:`<div style="display:flex;flex-direction:column;align-items:center;">
@@ -1500,13 +1467,15 @@ function makeOdpIcon(status, pelCount, maxPort, name) {
               <span class="odp-num">${txt}</span>
             </div>
             ${name ? `<div class="node-label-pill">${name}</div>` : ''}
+            ${descHtml}
           </div>`,
-    iconSize:[60,54],iconAnchor:[30,18],popupAnchor:[0,-20],
+    iconSize:[70, desc ? 68 : 54],iconAnchor:[35,18],popupAnchor:[0,-20],
   });
 }
 
 // ODC ORANGE BOX MARKER WITH NAME PILL
-function makeOdcIcon(status, core, name) {
+function makeOdcIcon(status, core, name, desc) {
+  var descHtml = desc ? `<div class="node-sublabel-pill">📝 ${desc}</div>` : '';
   return L.divIcon({
     className:'',
     html:`<div style="display:flex;flex-direction:column;align-items:center;">
@@ -1514,21 +1483,24 @@ function makeOdcIcon(status, core, name) {
               <i class="bx bx-cube-alt" style="font-size:18px;"></i>
             </div>
             ${name ? `<div class="node-label-pill">${name}</div>` : ''}
+            ${descHtml}
           </div>`,
-    iconSize:[60,56],iconAnchor:[30,19],popupAnchor:[0,-20],
+    iconSize:[70, desc ? 68 : 54],iconAnchor:[35,18],popupAnchor:[0,-20],
   });
 }
 
 function renderOlt(n) {
   if (!n.lat || !n.lng) return;
+  var descHtml = (n.deskripsi || n.lokasi || n.catatan) ? `<div class="node-sublabel-pill">📝 ${n.deskripsi || n.lokasi || n.catatan}</div>` : '';
   var m = L.marker([n.lat,n.lng],{
     icon:L.divIcon({
       className:'',
       html:`<div style="display:flex;flex-direction:column;align-items:center;">
-              <div class="gis-marker olt" style="width:40px;height:40px;"><i class="bx bx-server"></i></div>
+              <div class="gis-marker olt" style="width:38px;height:38px;"><i class="bx bx-server"></i></div>
               <div class="node-label-pill">${n.nama||'OLT'}</div>
+              ${descHtml}
             </div>`,
-      iconSize:[70,58],iconAnchor:[35,20],popupAnchor:[0,-22]
+      iconSize:[80, descHtml ? 68 : 54],iconAnchor:[40,19],popupAnchor:[0,-22]
     }),
     draggable:true
   });
@@ -1540,7 +1512,8 @@ function renderOlt(n) {
 
 function renderOdc(n) {
   if (!n.lat || !n.lng) return;
-  var m = L.marker([n.lat,n.lng],{icon:makeOdcIcon(n.status,n.kapasitas_core,n.nama),draggable:true});
+  var desc = n.deskripsi || n.catatan || n.lokasi || '';
+  var m = L.marker([n.lat,n.lng],{icon:makeOdcIcon(n.status,n.kapasitas_core,n.nama,desc),draggable:true});
   m.bindPopup(buildNodePopup(n,'ODC',`<div class="p-row"><span class="lbl"><i class="bx bx-layer"></i> Kapasitas</span><span class="val">${n.kapasitas_core||'—'} core</span></div>`));
   m.on('dragend', e => savePos('odc',n.id,e.target.getLatLng()));
   m.on('click', () => hiSidebar('odc',n.id));
@@ -1550,7 +1523,8 @@ function renderOdc(n) {
 function renderOdp(n) {
   if (!n.lat || !n.lng) return;
   var pelCount = DATA.pelanggan.filter(p => p.odp_id == n.id).length;
-  var m = L.marker([n.lat,n.lng],{icon:makeOdpIcon(n.status,pelCount,n.kapasitas_port,n.nama),draggable:true});
+  var desc = n.deskripsi || n.catatan || n.lokasi || '';
+  var m = L.marker([n.lat,n.lng],{icon:makeOdpIcon(n.status,pelCount,n.kapasitas_port,n.nama,desc),draggable:true});
   m.bindPopup(buildNodePopup(n,'ODP',
     `<div class="p-row"><span class="lbl"><i class="bx bx-plug"></i> Port</span><span class="val">${pelCount}/${n.kapasitas_port||'?'}</span></div>` +
     `<div class="p-row"><span class="lbl"><i class="bx bx-cube-alt"></i> ODC Induk</span><span class="val">${n.parent_id ? (DATA.odcOdps.find(x=>x.id===n.parent_id)?.nama||n.parent_id) : '—'}</span></div>`));
@@ -1563,13 +1537,27 @@ function renderOnt(n) {
   if (!n.lat || !n.lng) return;
   var isOnline = n.status === 'online';
   var stClass = isOnline ? 'ont' : 'ont off';
-  var m = L.marker([n.lat,n.lng],{icon:makeIcon(stClass,'bx bx-wifi',24)});
+  var descHtml = (n.alamat && n.alamat !== 'Lokasi Terdaftar FTTH Map') ? `<div class="node-sublabel-pill">📝 ${n.alamat}</div>` : '';
+  
+  var m = L.marker([n.lat,n.lng],{
+    icon:L.divIcon({
+      className:'',
+      html:`<div style="display:flex;flex-direction:column;align-items:center;">
+              <div class="gis-marker ${stClass}" style="width:30px;height:30px;"><i class="bx bx-wifi"></i></div>
+              <div class="node-label-pill">${n.nama||'ONT'}</div>
+              ${descHtml}
+            </div>`,
+      iconSize:[70, descHtml ? 58 : 46],iconAnchor:[35,15],popupAnchor:[0,-18]
+    }),
+    draggable:true
+  });
 
   var rxClass = rxColorClass(n.onu_rx_power);
   var rxAwal = n.onu_rx_baseline ? `${n.onu_rx_baseline} dBm` : '—';
   var rxNow  = n.onu_rx_power  ? `${n.onu_rx_power} dBm` : '—';
 
   m.bindPopup(buildOntPopup(n, rxAwal, rxNow, rxClass), {maxWidth:290,minWidth:290});
+  m.on('dragend', e => savePos('ont',n.id,e.target.getLatLng()));
   m.on('click', () => {
     hiSidebar('ont',n.id);
     activePopupPelanggan = n;
@@ -1608,7 +1596,7 @@ function renderOnt(n) {
   markerReg['pelanggan_'+n.id] = m;
 }
 
-// RENDER KABEL + CABLE NAME LABEL + DISTANCE PILLS
+// RENDER KABEL + CABLE NAME LABEL + DISTANCE PILLS (CLEAN & RAPI)
 function renderKabel(k) {
   if (!k.geometry || k.geometry.length < 2) return;
   var isFeeder = k.tipe === 'feeder';
@@ -1622,21 +1610,40 @@ function renderKabel(k) {
   L_CABLE.addLayer(line);
   kabelReg[k.id] = line;
 
-  // Main Cable Name Label Pill (dengan keterangan catatan jika ada)
+  // Hitung total meter rute kabel
+  var totalMeters = 0;
+  for (var i = 0; i < k.geometry.length - 1; i++) {
+    var ptA = L.latLng(k.geometry[i][0], k.geometry[i][1]);
+    var ptB = L.latLng(k.geometry[i+1][0], k.geometry[i+1][1]);
+    totalMeters += Math.round(ptA.distanceTo(ptB));
+  }
+
+  // Main Cable Name Label Pill (dengan keterangan catatan & total jarak rapi)
   var midIndex = Math.floor(k.geometry.length / 2);
   var midPt = k.geometry[midIndex];
-  var catTxt = k.catatan ? `<br><small style="font-size:9px;color:#f8fafc;font-weight:400;">📝 ${k.catatan}</small>` : '';
+  var catTxt = k.catatan ? `<div style="font-size:9px;color:#38bdf8;font-weight:500;margin-top:2px;">📝 ${k.catatan}</div>` : '';
   var labelTooltip = L.tooltip({
     permanent: true, direction: 'top', className: 'cl', interactive: false
-  }).setLatLng(midPt).setContent(`<span style="color:${color};font-weight:700;">━</span> <b>${k.label}</b>${catTxt}`);
+  }).setLatLng(midPt).setContent(`
+    <div style="text-align:center;">
+      <div style="font-weight:700;color:${color};display:flex;align-items:center;justify-content:center;gap:4px;">
+        <span>━</span> ${k.label} <span style="background:rgba(255,255,255,.2);padding:1px 4px;border-radius:3px;font-size:9px;color:#0f172a;">${totalMeters}m</span>
+      </div>
+      ${catTxt}
+    </div>
+  `);
   labelReg[`lbl_${k.id}`] = labelTooltip;
   if (showLabels) L_LABEL.addLayer(labelTooltip);
 
-  // Segment Distance Pills
+  // Segment Distance Pills: Tampilkan hanya jika jarak segmen cukup panjang (>= 35 meter) agar tidak menumpuk berantakan
   for (var i = 0; i < k.geometry.length - 1; i++) {
     var p1 = L.latLng(k.geometry[i][0], k.geometry[i][1]);
     var p2 = L.latLng(k.geometry[i+1][0], k.geometry[i+1][1]);
     var distMeters = Math.round(p1.distanceTo(p2));
+    
+    // Jangan buat pill untuk segmen tikungan kecil (< 35m) agar peta tetap bersih dan rapi
+    if (distMeters < 35 && k.geometry.length > 3) continue;
+
     var midLat = (k.geometry[i][0] + k.geometry[i+1][0]) / 2;
     var midLng = (k.geometry[i][1] + k.geometry[i+1][1]) / 2;
 
