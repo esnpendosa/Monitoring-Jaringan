@@ -49,8 +49,9 @@
         // Initial view centered around a default location
         var map = L.map('map-full').setView([-7.1207, 112.5959], 14);
         
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
+        L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: '© Google Earth Satellite',
+            maxZoom: 20
         }).addTo(map);
 
         var customers = @json($pelanggan);
@@ -66,10 +67,12 @@
                     return;
                 }
 
-                var color = '#28a745'; // Online - Hijau
-                if(c.status_gis === 'offline') color = '#ffc107'; // Offline - Kuning
-                if(c.status_gis === 'timeout') color = '#dc3545'; // Timeout - Merah
-                if(c.status_gis === 'perbaikan') color = '#007bff'; // Perbaikan - Biru
+                var isOnline = (c.last_online_status == 1 || c.status === 'online') && (c.status_gis !== 'offline' && c.status_gis !== 'timeout');
+                if (c.last_online_status == 0 || c.status === 'offline' || c.status_gis === 'offline' || c.status_gis === 'timeout') {
+                    isOnline = false;
+                }
+                var color = isOnline ? '#16a34a' : '#dc2626'; // Offline = Merah (#dc2626)
+                if (c.status_gis === 'perbaikan') color = '#007bff';
 
                 var marker = L.circleMarker([c.latitude, c.longitude], {
                     radius: 10,
@@ -80,7 +83,8 @@
                     fillOpacity: 0.9
                 });
 
-                var statusLabel = c.status_gis.toUpperCase();
+                var statusLabel = isOnline ? '🟢 ONLINE' : '🔴 OFFLINE / PUTUS';
+                if (c.status_gis === 'perbaikan') statusLabel = '🔵 PERBAIKAN';
                 if(c.status_gis === 'online') statusLabel = '🟢 ONLINE';
                 if(c.status_gis === 'offline') statusLabel = '🟡 OFFLINE (LOSS)';
                 if(c.status_gis === 'timeout') statusLabel = '🔴 TIMEOUT (ISOLIR)';

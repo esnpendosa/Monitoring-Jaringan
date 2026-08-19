@@ -23,7 +23,7 @@
                         </a>
                     </div>
                     <!-- /Logo -->
-                    <h4 class="mb-1 text-center">WiFi Management System 🎓</h4>
+                    <h4 class="mb-1 text-center">WiFi Management System</h4>
                     <p class="mb-6 text-center">Selamat Datang di Rozitech - Silakan Login.</p>
 
                     <form id="formAuthentication" class="mb-6" action="{{ route('login.post') }}" method="POST">

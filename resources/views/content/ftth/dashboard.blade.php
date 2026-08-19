@@ -30,17 +30,19 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   position:fixed;top:0;left:0;right:0;height:var(--topbar-h);z-index:2000;
   background:rgba(255,255,255,.96);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--bd);
-  display:flex;align-items:center;gap:5px;padding:0 10px;
+  display:flex;align-items:center;gap:3px;padding:0 8px;
   box-shadow:0 1px 3px rgba(0,0,0,.05);
+  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none;
 }
+#topbar::-webkit-scrollbar{display:none;}
 .brand{
-  font-size:14px;font-weight:700;color:var(--acc);white-space:nowrap;padding-right:10px;
-  border-right:1px solid var(--bd);display:flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:700;color:var(--acc);white-space:nowrap;padding-right:8px;
+  border-right:1px solid var(--bd);display:flex;align-items:center;gap:5px;flex-shrink:0;
 }
 .tb-btn{
-  height:30px;padding:0 10px;border-radius:6px;border:none;
-  font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;
-  display:flex;align-items:center;gap:5px;white-space:nowrap;
+  height:28px;padding:0 7px;border-radius:6px;border:none;
+  font-size:10.5px;font-weight:600;cursor:pointer;font-family:inherit;
+  display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0;
   transition:all .15s;
 }
 .tb-btn.green{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;}
@@ -57,40 +59,38 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 .tb-btn.purple:hover{background:#e9d5ff;}
 
 .queue-badge{
-  height:30px;padding:0 10px;border-radius:6px;background:#fee2e2;color:#b91c1c;
-  border:1px solid #fca5a5;font-size:11px;font-weight:700;
-  display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;
+  height:28px;padding:0 7px;border-radius:6px;background:#fee2e2;color:#b91c1c;
+  border:1px solid #fca5a5;font-size:10.5px;font-weight:700;
+  display:flex;align-items:center;gap:4px;white-space:nowrap;cursor:pointer;flex-shrink:0;
 }
-.queue-badge .num{font-size:12px;}
-.tb-sep{width:1px;height:24px;background:var(--bd);margin:0 2px;flex-shrink:0;}
-.tb-search{
-  flex:1;min-width:0;max-width:300px;
-  display:flex;align-items:center;gap:6px;
-  background:#f1f5f9;border:1px solid var(--bd);
-  border-radius:8px;padding:0 10px;height:30px;margin:0 4px;
-}
-.tb-search input{
-  flex:1;border:none;background:transparent;color:var(--text);
-  font-size:11px;font-family:inherit;outline:none;min-width:0;
-}
-.tb-search input::placeholder{color:var(--muted);}
+.queue-badge .num{font-size:11px;}
+.tb-sep{width:1px;height:22px;background:var(--bd);margin:0 1px;flex-shrink:0;}
 .icon-btn{
-  height:30px;padding:0 10px;border-radius:6px;border:1px solid var(--bd);
-  background:#ffffff;color:var(--text);font-size:11px;cursor:pointer;
+  height:28px;padding:0 7px;border-radius:6px;border:1px solid var(--bd);
+  background:#ffffff;color:var(--text);font-size:10.5px;cursor:pointer;
   font-family:inherit;white-space:nowrap;display:flex;align-items:center;gap:4px;
-  text-decoration:none;transition:all .15s;
+  text-decoration:none;transition:all .15s;flex-shrink:0;
 }
 .icon-btn:hover{background:#f1f5f9;border-color:var(--acc);color:var(--acc);}
 .notif-btn{
-  position:relative;width:30px;height:30px;border-radius:6px;border:1px solid var(--bd);
+  position:relative;width:28px;height:28px;border-radius:6px;border:1px solid var(--bd);
   background:#ffffff;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  font-size:14px;color:var(--text);transition:all .15s;
+  font-size:14px;color:var(--text);transition:all .15s;flex-shrink:0;
 }
 .notif-btn:hover{background:#f1f5f9;}
 .notif-btn .badge{
   position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;
   font-size:9px;font-weight:700;min-width:16px;height:16px;
   border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;
+}
+
+@keyframes cableDashFlow {
+  from { stroke-dashoffset: 32px; }
+  to { stroke-dashoffset: 0px; }
+}
+.animated-cable {
+  stroke-dasharray: 10, 6 !important;
+  animation: cableDashFlow 0.8s linear infinite !important;
 }
 
 /* ── MAIN LAYOUT ────────────────────────── */
@@ -155,20 +155,23 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   background:#f8fafc;
 }
 #ftth-map{width:100%;height:100%;background:#f8fafc;}
+.leaflet-control-attribution{display:none !important;}
 
 /* ── MAP CONTROLS (right float - LIGHT) ─── */
 #map-ctrls{
-  position:absolute;top:8px;right:8px;z-index:900;
+  position:absolute;top:10px;right:16px;z-index:900;
   display:flex;flex-direction:column;gap:4px;
+  max-height:calc(100vh - 80px);overflow-y:auto;
+  scrollbar-width:none;-ms-overflow-style:none;
 }
+#map-ctrls::-webkit-scrollbar{display:none;}
 .mc{
-  width:34px;height:34px;border-radius:8px;border:1px solid var(--bd);
-  background:rgba(255,255,255,.94);backdrop-filter:blur(8px);
-  color:var(--text);cursor:pointer;font-size:15px;
+  width:34px;height:34px;border-radius:8px;border:1px solid #cbd5e1;
+  background:#ffffff;color:#0f172a;cursor:pointer;font-size:16px;
   display:flex;align-items:center;justify-content:center;transition:all .15s;
-  position:relative;box-shadow:0 2px 6px rgba(0,0,0,.08);
+  position:relative;box-shadow:0 2px 8px rgba(0,0,0,.2);flex-shrink:0;
 }
-.mc:hover,.mc.on{background:rgba(37,99,235,.12);border-color:rgba(37,99,235,.4);color:var(--acc);}
+.mc:hover,.mc.on{background:#e0f2fe;border-color:#0284c7;color:#0284c7;}
 .mc .tt{
   position:absolute;right:40px;white-space:nowrap;
   background:rgba(255,255,255,.98);color:var(--text);font-size:10px;
@@ -206,23 +209,25 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 
 /* ── STATUS BAR (LIGHT) ─────────────────── */
 #statusbar{
-  position:absolute;bottom:0;left:0;right:0;height:30px;z-index:900;
-  background:rgba(255,255,255,.94);backdrop-filter:blur(8px);
+  position:absolute;bottom:0;left:0;right:0;height:34px;z-index:900;
+  background:rgba(255,255,255,.96);backdrop-filter:blur(8px);
   border-top:1px solid var(--bd);
-  display:flex;align-items:center;gap:14px;padding:0 12px;font-size:10px;
+  display:flex;align-items:center;gap:12px;padding:0 12px;font-size:10.5px;
+  overflow:hidden;
 }
-#statusbar span{display:flex;align-items:center;gap:4px;color:var(--muted);}
+#statusbar span{display:flex;align-items:center;gap:4px;color:var(--muted);white-space:nowrap;}
 #statusbar .on-c{color:var(--green);font-weight:700;}
 #statusbar .of-c{color:var(--red);font-weight:700;}
-#statusbar .coords{margin-left:auto;color:var(--muted);}
+#statusbar .coords{margin-left:auto;color:var(--muted);white-space:nowrap;}
 .mode-grp{
-  display:flex;align-items:center;gap:10px;margin-left:auto;
+  display:flex;align-items:center;gap:8px;margin-left:8px;
   background:#f1f5f9;border:1px solid var(--bd);
-  border-radius:6px;padding:3px 10px;
+  border-radius:6px;padding:2px 8px;flex-shrink:0;
 }
-.mode-grp label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:10px;color:var(--muted);}
+.mode-grp label{display:flex;align-items:center;gap:3px;cursor:pointer;font-size:10px;color:var(--muted);white-space:nowrap;}
 .mode-grp input{accent-color:var(--acc);}
 .mode-grp label:hover{color:var(--text);}
+.mc-sep{height:1px;background:#e2e8f0;margin:3px 0;width:100%;flex-shrink:0;}
 
 /* ── RIGHT PANEL (LIGHT) ────────────────── */
 #right-panel{
@@ -436,7 +441,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 
 /* Toast */
 #toast{
-  position:fixed;bottom:40px;left:50%;transform:translateX(-50%) translateY(60px);
+  position:fixed;bottom:56px;left:50%;transform:translateX(-50%) translateY(60px);
   z-index:9999;background:#ffffff;border:1px solid var(--bd);color:var(--text);
   padding:8px 16px;border-radius:8px;font-size:12px;font-weight:500;
   box-shadow:0 10px 30px rgba(0,0,0,.15);
@@ -575,15 +580,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   <button class="tb-btn teal"  onclick="openAutoTiangModal()"><i class="bx bx-map-pin"></i> Auto Tiang</button>
   <div class="queue-badge" onclick="openModal('m-queue')"><i class="bx bx-list-ol"></i> Queue <span class="num" id="queue-num">—</span></div>
 
-  <div class="tb-sep"></div>
 
-  <div class="tb-search">
-    <i class="bx bx-search" style="color:var(--muted);font-size:14px;"></i>
-    <input id="search-input" type="text" placeholder="Cari Lat,Lng atau Nama..." oninput="doSearch(this.value)">
-    <span id="s-clear" style="color:var(--muted);cursor:pointer;display:none;" onclick="clearSearch()"><i class="bx bx-x"></i></span>
-  </div>
-
-  <div class="tb-sep"></div>
 
   <button class="icon-btn" onclick="openModal('m-backup')"><i class="bx bx-upload"></i> Import KMZ</button>
   <button class="icon-btn" onclick="exportCsv()"><i class="bx bx-download"></i> Export CSV</button>
@@ -632,13 +629,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
       <button class="draw-cancel" onclick="cancelDraw()"><i class="bx bx-x"></i> Batal</button>
     </div>
 
-    <!-- Toggle sidebar -->
-    <button id="sb-toggle" onclick="toggleSidebar()"
-      style="position:absolute;top:8px;left:8px;z-index:910;width:34px;height:34px;
-             border-radius:8px;border:1px solid var(--bd);background:rgba(255,255,255,.94);
-             color:var(--text);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.1);">
-      <i class="bx bx-menu"></i>
-    </button>
+
 
     <!-- Right controls -->
     <div id="map-ctrls">
@@ -649,25 +640,12 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
       <button class="mc on" id="mc-ont"   onclick="toggleLyr('ont')"  ><i class="bx bx-home-alt"></i><span class="tt">ONT</span></button>
       <button class="mc on" id="mc-item"  onclick="toggleLyr('item')" ><i class="bx bx-map-pin"></i><span class="tt">Item</span></button>
       <button class="mc on" id="mc-lbl"   onclick="toggleLabels()"    ><i class="bx bx-purchase-tag-alt"></i><span class="tt">Label Kabel</span></button>
-      <button class="mc"    id="mc-anim"  onclick="toggleAnim()"      ><i class="bx bx-sparkles"></i><span class="tt">Animasi</span></button>
+      <button class="mc on" id="mc-anim"  onclick="toggleAnim()"      ><i class="bx bx-bolt"></i><span class="tt">Animasi Kabel</span></button>
       <div class="mc-sep"></div>
       <button class="mc" onclick="startDrawCable()"  ><i class="bx bx-edit-alt"></i><span class="tt">Gambar Kabel</span></button>
       <button class="mc" onclick="openPingTerminal()"><i class="bx bx-terminal"></i><span class="tt">Ping Terminal</span></button>
       <button class="mc" onclick="startMeasure()"    ><i class="bx bx-ruler"></i><span class="tt">Ukur Jarak</span></button>
       <button class="mc" onclick="fitAll()"          ><i class="bx bx-target-lock"></i><span class="tt">Fit Semua</span></button>
-    </div>
-
-    <!-- Legend -->
-    <div id="legend">
-      <div class="leg-r"><div class="leg-l" style="background:#16a34a;height:5px;"></div><span>Online</span></div>
-      <div class="leg-r"><div class="leg-l" style="background:#d97706;height:4px;"></div><span>Warning / Redaman Tinggi</span></div>
-      <div class="leg-r"><div class="leg-l" style="background:#dc2626;height:5px;"></div><span>Offline / Putus</span></div>
-      <div class="leg-r"><div class="leg-l" style="background:#0284c7;height:3px;"></div><span>Feeder Cable (Cyan)</span></div>
-      <div class="leg-r"><div class="leg-l" style="background:#d97706;height:3px;"></div><span>Distribusi Cable (Kuning)</span></div>
-      <div style="height:6px;"></div>
-      <div class="leg-r"><div class="leg-c" style="background:#facc15;"></div><span>ODP Box (Yellow)</span></div>
-      <div class="leg-r"><div class="leg-c" style="background:#f97316;"></div><span>ODC Cabinet (Orange)</span></div>
-      <div class="leg-r"><div class="leg-c" style="background:#94a3b8;"></div><span>Tiang Tumpu</span></div>
     </div>
 
     <!-- Status bar -->
@@ -694,17 +672,25 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
       <button class="rp-tab active" id="rp-terlama" onclick="setRpSort('terlama', this)"><i class="bx bx-sort-up"></i> Terlama</button>
       <button class="rp-tab" id="rp-terbaru" onclick="setRpSort('terbaru', this)"><i class="bx bx-sort-down"></i> Terbaru</button>
     </div>
-    <div class="rp-actions">
-      <button class="rp-btn wa" onclick="openWaModal()"><i class="bx bxl-whatsapp"></i> Pengaturan WA</button>
-      <button class="rp-btn tg" onclick="openModal('m-telegram')"><i class="bx bxl-telegram"></i> Telegram</button>
-    </div>
+
     <div class="rp-hdr">ONU OFFLINE <span class="cnt">(<span id="offline-count">0</span>)</span></div>
     <div id="offline-list"><div style="padding:16px;text-align:center;color:var(--muted);font-size:11px;">Memuat data...</div></div>
   </div>
 
 </div><!-- #main -->
 
-<!-- ══════════════════════════════════════ MODALS ═══════════════════ -->
+<!-- DEDICATED WHATSAPP MULTI-DEVICE MANAGER MODAL -->
+<div class="modal-backdrop" id="m-wa-config" style="display:none;" onclick="if(event.target===this)closeModal('m-wa-config')">
+  <div class="modal" style="width:92%;max-width:1150px;height:85vh;max-height:820px;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,0.3);background:#fff;">
+    <div class="m-hdr" style="padding:12px 18px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;background:#f8fafc;">
+      <h5 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;color:#16a34a;">
+        <i class="bx bxl-whatsapp" style="font-size:20px;"></i> WhatsApp Multi-Device Manager & Server Bot
+      </h5>
+      <button class="m-close" onclick="closeModal('m-wa-config')"><i class="bx bx-x"></i></button>
+    </div>
+    <iframe src="{{ route('whatsapp.index') }}" style="flex:1;width:100%;border:none;background:#ffffff;"></iframe>
+  </div>
+</div>
 
 <!-- DEDICATED KABEL SAVE MODAL -->
 <div class="modal-backdrop" id="m-simpan-kabel">
@@ -729,12 +715,22 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
         <input id="nk-label" type="text" placeholder="odc-c320-c1. - odp-c320-c1-c1">
       </div>
       <div class="fg">
-        <label>Tipe Kabel</label>
-        <select id="nk-tipe">
-          <option value="feeder">Feeder Cable (Cyan)</option>
-          <option value="distribusi" selected>Distribusi Cable (Kuning)</option>
-          <option value="drop">Drop Core Cable</option>
+        <label>Tipe Kabel & Warna Standard</label>
+        <select id="nk-tipe" onchange="onCableTypeSelectChange()">
+          <option value="feeder">Feeder Cable (Cyan - #0284c7)</option>
+          <option value="distribusi" selected>Distribusi Cable (Kuning/Orange - #d97706)</option>
+          <option value="backbone">Backbone Cable (Ungu - #8b5cf6)</option>
+          <option value="trunk">Trunk Cable (Magenta/Merah - #ec4899)</option>
+          <option value="sub_distribusi">Sub-Distribusi Cable (Hijau - #10b981)</option>
+          <option value="drop">Drop Core Cable (Biru - #2563eb)</option>
         </select>
+      </div>
+      <div class="fg">
+        <label>Pilih Warna Custom Kabel (Opsional - Realtime Preview)</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="color" id="nk-color-picker" value="#d97706" style="height:36px;width:50px;padding:2px;cursor:pointer;border-radius:6px;border:1px solid var(--bd);" oninput="document.getElementById('nk-color').value=this.value; updateCableRealtimePreview();">
+          <input id="nk-color" type="text" placeholder="#d97706 (Opsional - Hex Kode Warna)" style="flex:1;" oninput="updateCableRealtimePreview();">
+        </div>
       </div>
       <div class="fg">
         <label>Jumlah Core</label>
@@ -1359,6 +1355,17 @@ function openModal(id) {
   var el = document.getElementById(id);
   if (el) {
     el.classList.add('open');
+    if (id === 'm-simpan-kabel') {
+      var pts = window.pendingCablePts || [];
+      var startPt = pts.length ? pts[0] : null;
+      var endPt = pts.length ? pts[pts.length - 1] : null;
+      if (typeof populateCableNodeSelects === 'function') {
+        populateCableNodeSelects(startPt, endPt);
+      }
+      if (typeof onCableTypeSelectChange === 'function') {
+        onCableTypeSelectChange();
+      }
+    }
   } else {
     console.warn('Modal not found:', id);
   }
@@ -1405,14 +1412,14 @@ var autoRefreshTimer;
 // ──────────────── INIT ──────────────────────────────────────────────
 function initMap() {
   try {
-    MAP = L.map('ftth-map',{center:[-7.1207,112.5959],zoom:14,zoomControl:false,attributionControl:true});
+    MAP = L.map('ftth-map',{center:[-7.1207,112.5959],zoom:14,zoomControl:false,attributionControl:false});
 
+    satTile   = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{attribution:'© Google Earth Satellite',maxZoom:20});
     darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d']});
-    satTile   = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:19});
     osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c']});
 
-    currentTile = osmTile; // Default to Light Mode tile
-    osmTile.addTo(MAP);
+    currentTile = satTile; // Default to Google Earth Satellite tile!
+    satTile.addTo(MAP);
 
     [L_CABLE,L_LABEL,L_ITEM,L_ODP,L_ODC,L_OLT,L_ONT].forEach(l => l.addTo(MAP));
     L.control.zoom({position:'bottomright'}).addTo(MAP);
@@ -1426,6 +1433,7 @@ function initMap() {
 
     loadAll();
     autoRefreshTimer = setInterval(() => loadAll(true), 60000);
+    makeLegendDraggable();
 
     setTimeout(() => {
       var loader = document.getElementById('app-loader');
@@ -1520,6 +1528,22 @@ function makeIcon(boxClass, iconClass, size) {
     iconSize:[size,size],iconAnchor:[size/2,size/2],popupAnchor:[0,-size/2+2],
   });
 }
+function handleMarkerClick(type, id, latlng, defaultFn, e) {
+  if (drawActive) {
+    if (e && e.originalEvent && e.originalEvent.stopPropagation) {
+      e.originalEvent.stopPropagation();
+    }
+    var nodeNama = '';
+    var all = [...(DATA.olts||[]), ...(DATA.odcOdps||[]), ...(DATA.pelanggan||[]), ...(DATA.ftthItems||[])];
+    var matched = all.find(n => n.id == id);
+    if (matched) nodeNama = matched.nama || matched.kode || '';
+    if (nodeNama) showToast(`Titik terhubung ke node: ${nodeNama}`, 'ok');
+    addDrawPt(latlng);
+    return;
+  }
+  if (typeof defaultFn === 'function') defaultFn();
+}
+
 // ODP YELLOW BOX MARKER WITH NAME PILL
 function makeOdpIcon(status, pelCount, maxPort, name, desc) {
   var stClass = status === 'offline' ? 'off' : status === 'warning' ? 'wa' : '';
@@ -1556,13 +1580,12 @@ function makeOdcIcon(status, core, name, desc) {
 function renderOlt(n) {
   if (!n.lat || !n.lng) return;
   var desc = n.deskripsi || n.lokasi || n.catatan || '';
-  var descHtml = desc ? `<span class="sub-desc">${desc}</span>` : '';
   var m = L.marker([n.lat,n.lng],{
-    icon:L.divIcon({
+    icon: L.divIcon({
       className:'',
       html:`<div style="display:flex;flex-direction:column;align-items:center;">
-              <div class="gis-marker olt" style="width:38px;height:38px;"><i class="bx bx-server"></i></div>
-              <div class="node-label-pill">${n.nama||'OLT'}${descHtml}</div>
+              <div class="gis-marker olt" style="width:34px;height:34px;"><i class="bx bx-server"></i></div>
+              <div class="node-label-pill">${n.nama||'OLT'}${desc ? `<span class="sub-desc">${desc}</span>` : ''}</div>
             </div>`,
       iconSize:[80, desc ? 58 : 50],iconAnchor:[40,19],popupAnchor:[0,-22]
     }),
@@ -1570,7 +1593,7 @@ function renderOlt(n) {
   });
   m.bindPopup(buildNodePopup(n,'OLT',`<div class="p-row"><span class="lbl"><i class="bx bx-chip"></i> IP</span><span class="val mono">${n.ip_address||'—'}</span></div><div class="p-row"><span class="lbl"><i class="bx bx-broadcast"></i> PON</span><span class="val">${n.kapasitas_pon||'—'} port</span></div>`));
   m.on('dragend', e => savePos('olt',n.id,e.target.getLatLng()));
-  m.on('click', () => hiSidebar('olt',n.id));
+  m.on('click', (e) => handleMarkerClick('olt', n.id, m.getLatLng(), () => hiSidebar('olt',n.id), e));
   L_OLT.addLayer(m); markerReg['olt_'+n.id] = m;
 }
 
@@ -1580,7 +1603,7 @@ function renderOdc(n) {
   var m = L.marker([n.lat,n.lng],{icon:makeOdcIcon(n.status,n.kapasitas_core,n.nama,desc),draggable:true});
   m.bindPopup(buildNodePopup(n,'ODC',`<div class="p-row"><span class="lbl"><i class="bx bx-layer"></i> Kapasitas</span><span class="val">${n.kapasitas_core||'—'} core</span></div>`));
   m.on('dragend', e => savePos('odc',n.id,e.target.getLatLng()));
-  m.on('click', () => hiSidebar('odc',n.id));
+  m.on('click', (e) => handleMarkerClick('odc', n.id, m.getLatLng(), () => hiSidebar('odc',n.id), e));
   L_ODC.addLayer(m); markerReg['odc_'+n.id] = m;
 }
 
@@ -1593,7 +1616,7 @@ function renderOdp(n) {
     `<div class="p-row"><span class="lbl"><i class="bx bx-plug"></i> Port</span><span class="val">${pelCount}/${n.kapasitas_port||'?'}</span></div>` +
     `<div class="p-row"><span class="lbl"><i class="bx bx-cube-alt"></i> ODC Induk</span><span class="val">${n.parent_id ? (DATA.odcOdps.find(x=>x.id===n.parent_id)?.nama||n.parent_id) : '—'}</span></div>`));
   m.on('dragend', e => savePos('odp',n.id,e.target.getLatLng()));
-  m.on('click', () => hiSidebar('odp',n.id));
+  m.on('click', (e) => handleMarkerClick('odp', n.id, m.getLatLng(), () => hiSidebar('odp',n.id), e));
   L_ODP.addLayer(m); markerReg['odp_'+n.id] = m;
 }
 
@@ -1622,7 +1645,15 @@ function renderOnt(n) {
 
   m.bindPopup(buildOntPopup(n, rxAwal, rxNow, rxClass), {maxWidth:290,minWidth:290});
   m.on('dragend', e => savePos('ont',n.id,e.target.getLatLng()));
-  m.on('click', () => {
+  m.on('click', (e) => {
+    if (drawActive) {
+      if (e && e.originalEvent && e.originalEvent.stopPropagation) {
+        e.originalEvent.stopPropagation();
+      }
+      setTimeout(() => m.closePopup(), 10);
+      handleMarkerClick('pelanggan', n.id, m.getLatLng(), null, e);
+      return;
+    }
     hiSidebar('ont',n.id);
     activePopupPelanggan = n;
     setTimeout(() => initTrafficChart(n.id), 100);
@@ -1631,24 +1662,34 @@ function renderOnt(n) {
     fetch(`${BASE}/ftth/api/wifi-info/${n.id}`, {headers:{Accept:'application/json'}})
       .then(r => r.json())
       .then(d => {
+        var isOnline = (n.status === 'online') && (d.is_online !== false);
         var ssidEl = document.getElementById('wifi-ssid-' + n.id);
-        if (ssidEl) ssidEl.textContent = d.ssid || 'Belum diset';
-        var cliEl = document.getElementById('wifi-cli-' + n.id);
-        if (cliEl) cliEl.textContent = d.clients_count || '1 Online';
+        if (ssidEl) ssidEl.textContent = isOnline ? (d.ssid || 'Belum diset') : '—';
         
-        // Update live RX Power in popup if returned
-        if (d.rx_power) {
-          var rxNowEl = document.getElementById('rx-now-' + n.id);
-          if (rxNowEl) {
+        var cliEl = document.getElementById('wifi-cli-' + n.id);
+        if (cliEl) cliEl.textContent = isOnline ? (d.clients_count || '1 Online') : '0 (Offline)';
+        
+        var rxNowEl = document.getElementById('rx-now-' + n.id);
+        if (rxNowEl) {
+          if (isOnline && d.rx_power) {
             rxNowEl.textContent = d.rx_power + ' dBm';
             rxNowEl.className = 'r-val ' + rxColorClass(d.rx_power);
+          } else if (!isOnline) {
+            rxNowEl.textContent = 'Putus';
+            rxNowEl.className = 'r-val r-kritis';
           }
         }
 
-        // Update live ACS Uptime status if returned
-        if (d.uptime && d.uptime !== '-') {
-          var upEl = document.getElementById('acs-up-' + n.id);
-          if (upEl) upEl.textContent = 'Aktif · Up: ' + d.uptime;
+        var upEl = document.getElementById('acs-up-' + n.id);
+        if (upEl) {
+          var uptime = n.last_inform_at ? offDuration(n.last_inform_at, !isOnline) : '—';
+          if (isOnline) {
+            upEl.textContent = 'Aktif · Up: ' + (d.uptime && d.uptime !== '-' ? d.uptime : uptime);
+            upEl.className = 'val on';
+          } else {
+            upEl.textContent = 'Offline · Mati: ' + uptime;
+            upEl.className = 'val off';
+          }
         }
       })
       .catch(() => {
@@ -1663,16 +1704,30 @@ function renderOnt(n) {
 // RENDER KABEL + CABLE NAME LABEL + DISTANCE PILLS (CLEAN & RAPI)
 function renderKabel(k) {
   if (!k.geometry || k.geometry.length < 2) return;
-  var isFeeder = k.tipe === 'feeder';
-  var color = isFeeder ? '#0284c7' : (k.color || (k.tipe==='drop'?'#2563eb':'#d97706'));
+  var colorMap = {
+    feeder: '#0284c7',        // Cyan
+    distribusi: '#d97706',    // Kuning/Orange
+    backbone: '#8b5cf6',      // Ungu
+    trunk: '#ec4899',         // Magenta
+    sub_distribusi: '#10b981',// Hijau Emerald
+    drop: '#2563eb'           // Biru
+  };
+  var color = (k.color && k.color !== '#28a745' && k.color !== '#dc3545') ? k.color : (colorMap[k.tipe] || '#0284c7');
+  if (k.status === 'offline' || k.status === 'putus') {
+    color = '#dc2626'; // Red if offline/broken
+  }
   var line = L.polyline(k.geometry,{
     color, weight: wtOf(k.tipe), opacity:.95, smoothFactor:1.5,
-    dashArray: isFeeder ? '8, 6' : (k.tipe==='distribusi' ? '10, 5' : null)
+    dashArray: (k.tipe === 'feeder' || k.tipe === 'backbone') ? '8, 6' : (k.tipe==='distribusi'||k.tipe==='trunk' ? '10, 5' : '6, 4')
   });
   line.bindPopup(buildKabelPopup(k));
   line.on('click', () => hiSidebar('kabel',k.id));
   L_CABLE.addLayer(line);
   kabelReg[k.id] = line;
+
+  if (animEnabled && line._path) {
+    line._path.classList.add('animated-cable');
+  }
 
   // Hitung total meter rute kabel
   var totalMeters = 0;
@@ -1687,13 +1742,14 @@ function renderKabel(k) {
   var midPt = k.geometry[midIndex];
   var catTxt = k.catatan ? `<div class="sub-desc">${k.catatan}</div>` : '';
   var labelTooltip = L.tooltip({
-    permanent: true, direction: 'top', className: 'cl', interactive: false
+    permanent: true, direction: 'top', className: 'cl', interactive: true
   }).setLatLng(midPt).setContent(`
-    <div style="text-align:center;">
-      <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
+    <div style="text-align:center;cursor:pointer;" onclick="var l=kabelReg[${k.id}];if(l)l.openPopup();">
+      <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
         <span style="color:${color};font-weight:800;font-size:11px;">━</span>
         <b style="color:#0f172a;font-size:9.5px;">${k.label}</b>
         <span style="color:#64748b;font-size:8.5px;font-weight:500;">(${totalMeters}m)</span>
+        <button onclick="event.stopPropagation();if(confirm('Hapus kabel ${k.label}?'))deleteKabel(${k.id})" style="background:none;border:none;color:#ef4444;padding:0 2px;cursor:pointer;font-size:12px;" title="Hapus Kabel"><i class="bx bx-trash"></i></button>
       </div>
       ${catTxt}
     </div>
@@ -1757,7 +1813,7 @@ function renderItem(n) {
     type: 'item'
   }, catName, extraInfo));
   
-  m.on('click', () => hiSidebar('item', n.id));
+  m.on('click', (e) => handleMarkerClick('item', n.id, m.getLatLng(), () => hiSidebar('item', n.id), e));
   L_ITEM.addLayer(m);
   markerReg['item_'+n.id] = m;
 }
@@ -1776,6 +1832,10 @@ function buildOntPopup(n, rxAwal, rxNow, rxClass) {
   var statusLbl = isOnline ? 'ONLINE' : 'OFFLINE';
   var statusCls = isOnline ? '' : 'offline';
   var uptime = n.last_inform_at ? offDuration(n.last_inform_at, !isOnline) : '—';
+
+  var displayRxNow = isOnline ? rxNow : 'Putus';
+  var displayRxClass = isOnline ? rxClass : 'r-kritis';
+  var displayClients = isOnline ? '—' : '0 (Offline)';
 
   return `<div>
     <div class="p-hdr">
@@ -1799,12 +1859,12 @@ function buildOntPopup(n, rxAwal, rxNow, rxClass) {
         </div>
         <div class="p-redaman-box">
           <div class="r-lbl">Redaman Skrg</div>
-          <div class="r-val ${rxClass}" id="rx-now-${n.id}">${rxNow}</div>
+          <div class="r-val ${displayRxClass}" id="rx-now-${n.id}">${displayRxNow}</div>
         </div>
       </div>
-      <div class="p-wifi-row"><span class="lbl"><i class="bx bx-wifi"></i> SSID</span><span class="val" id="wifi-ssid-${n.id}">Memuat...</span></div>
+      <div class="p-wifi-row"><span class="lbl"><i class="bx bx-wifi"></i> SSID</span><span class="val" id="wifi-ssid-${n.id}">${isOnline ? 'Memuat...' : '—'}</span></div>
       <div class="p-wifi-row"><span class="lbl"><i class="bx bx-key"></i> Password</span><span class="val pass" id="wifi-pass-${n.id}">••••••••</span></div>
-      <div class="p-wifi-row"><span class="lbl"><i class="bx bx-devices"></i> Clients</span><span class="val" id="wifi-cli-${n.id}">—</span></div>
+      <div class="p-wifi-row"><span class="lbl"><i class="bx bx-devices"></i> Clients</span><span class="val" id="wifi-cli-${n.id}">${displayClients}</span></div>
       <div class="p-wifi-actions">
         <button class="p-wa chg" onclick="openChangeWifi(${n.id},'${String(n.nama||'')}')"><i class="bx bx-wifi"></i> Ganti WiFi</button>
         <button class="p-wa rbt" onclick="rebootOnt(${n.id},'${String(n.nama||'')}')"><i class="bx bx-power-off"></i> Reboot</button>
@@ -1812,7 +1872,7 @@ function buildOntPopup(n, rxAwal, rxNow, rxClass) {
       <div class="p-traffic">
         <div class="t-hdr">
           <span><i class="bx bx-line-chart"></i> Live Traffic</span>
-          <span id="tr-val-${n.id}" style="color:var(--muted);">TX: — RX: —</span>
+          <span id="tr-val-${n.id}" style="color:${isOnline?'var(--muted)':'var(--red)'};">${isOnline?'TX: — RX: —':'TX: 0.0 B · RX: 0.0 B (BERHENTI)'}</span>
         </div>
         <div class="chart-container">
           <canvas id="chart-${n.id}"></canvas>
@@ -1867,6 +1927,7 @@ function buildKabelPopup(k) {
       ${k.titik_putus_meter ? `<div class="p-row"><span class="lbl">Titik Putus</span><span class="val" style="color:var(--red);">±${k.titik_putus_meter}m</span></div>` : ''}
       <div class="p-divider"></div>
       <div class="p-actions">
+        <button class="p-act" onclick="autoRouteExistingKabel(${k.id})"><i class="bx bx-git-repo-forked"></i> Auto Rute Jalan</button>
         <button class="p-act" onclick="openAutoTiangForKabel(${k.id})"><i class="bx bx-map-pin"></i> Auto Tiang</button>
         <button class="p-act edit" onclick="openEditKabel(${k.id})"><i class="bx bx-edit"></i> Edit</button>
         <button class="p-act" onclick="if(confirm('Hapus kabel?'))deleteKabel(${k.id})"><i class="bx bx-trash"></i> Hapus</button>
@@ -2490,30 +2551,81 @@ async function addDrawPt(latlng) {
     var lastPt = drawPts[drawPts.length - 1];
     showToast('Menghitung rute jalan (OSRM)...','ok');
     try {
-      var url = `https://router.project-osrm.org/route/v1/driving/${lastPt[1]},${lastPt[0]};${newPt[1]},${newPt[0]}?overview=full&geometries=geojson`;
-      var res = await fetch(url);
+      var controller = new AbortController();
+      var timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      var url1 = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${lastPt[1]},${lastPt[0]};${newPt[1]},${newPt[0]}?overview=full&geometries=geojson`;
+      var res = await fetch(url1, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       var json = await res.json();
-      if (json.routes && json.routes[0] && json.routes[0].geometry) {
+      if (json.routes && json.routes[0] && json.routes[0].geometry && json.routes[0].geometry.coordinates.length) {
         var coords = json.routes[0].geometry.coordinates; // [[lng, lat], ...]
         coords.forEach(c => drawPts.push([c[1], c[0]]));
+        drawPts.push(newPt); // Always append target point so it connects to the device icon!
       } else {
         drawPts.push(newPt);
       }
     } catch(e) {
-      drawPts.push(newPt);
+      try {
+        var url2 = `https://router.project-osrm.org/route/v1/driving/${lastPt[1]},${lastPt[0]};${newPt[1]},${newPt[0]}?overview=full&geometries=geojson`;
+        var res2 = await fetch(url2);
+        var json2 = await res2.json();
+        if (json2.routes && json2.routes[0] && json2.routes[0].geometry && json2.routes[0].geometry.coordinates.length) {
+          json2.routes[0].geometry.coordinates.forEach(c => drawPts.push([c[1], c[0]]));
+          drawPts.push(newPt);
+        } else {
+          drawPts.push(newPt);
+        }
+      } catch(err) {
+        drawPts.push(newPt);
+      }
     }
   } else {
     drawPts.push(newPt);
   }
 
-  var m = L.circleMarker(latlng,{radius:5,color:'#0284c7',fillColor:'#0284c7',fillOpacity:1}).addTo(MAP);
+  var m = L.circleMarker(latlng,{radius:6,color:'#0284c7',fillColor:'#0284c7',fillOpacity:1}).addTo(MAP);
   drawTmpMarkers.push(m);
   if (drawTmpLine) MAP.removeLayer(drawTmpLine);
-  if (drawPts.length>1) drawTmpLine=L.polyline(drawPts,{color:'#0284c7',weight:4,dashArray:'6,4'}).addTo(MAP);
+  if (drawPts.length > 1) {
+    drawTmpLine = L.polyline(drawPts,{color:'#0284c7',weight:4,dashArray:'6,4'}).addTo(MAP);
+  }
+}
+
+async function autoRouteExistingKabel(id) {
+  var k = DATA.kabels.find(x => x.id == id);
+  if (!k || !k.geometry || k.geometry.length < 2) return;
+  var startPt = k.geometry[0];
+  var endPt = k.geometry[k.geometry.length - 1];
+
+  showToast('Menghitung rute jalan presisi (OSRM)...', 'ok');
+  try {
+    var url = `https://routing.openstreetmap.de/routed-car/route/v1/driving/${startPt[1]},${startPt[0]};${endPt[1]},${endPt[0]}?overview=full&geometries=geojson`;
+    var res = await fetch(url);
+    var json = await res.json();
+
+    if (json.routes && json.routes[0] && json.routes[0].geometry && json.routes[0].geometry.coordinates.length) {
+      var roadCoords = json.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+      var newCoords = [startPt, ...roadCoords, endPt];
+      await api('PUT', `${BASE}/ftth/api/kabel/${id}`, { geometry: newCoords });
+      showToast(`Kabel "${k.label}" berhasil disambungkan 100% sampai ke perangkat!`, 'ok');
+      loadAll(true);
+    } else {
+      showToast('Tidak dapat menemukan rute jalan terdekat', 'er');
+    }
+  } catch(e) {
+    showToast('Gagal menghitung rute jalan: ' + e.message, 'er');
+  }
 }
 
 function findClosestNode(lat, lng) {
-  var all = [...DATA.olts, ...DATA.odcOdps];
+  var all = [
+    ...(DATA.olts||[]).map(o => ({...o, type:'olt'})),
+    ...(DATA.odcOdps||[]).map(o => ({...o, type:(o.tipe||'odc').toLowerCase()})),
+    ...(DATA.pelanggan||[]).map(p => ({...p, type:'pelanggan'})),
+    ...(DATA.ftthItems||[]).map(i => ({...i, type:'ftth_item'}))
+  ];
   var minD = Infinity, closest = null;
   var pt = L.latLng(lat, lng);
   all.forEach(n => {
@@ -2530,25 +2642,49 @@ function populateCableNodeSelects(startPt, endPt) {
   var toSel = document.getElementById('nk-to');
   if (!fromSel || !toSel) return;
 
-  var all = [...DATA.olts, ...DATA.odcOdps];
+  var all = [
+    ...(DATA.olts||[]).map(o => ({...o, type:'olt', badge:'[OLT]'})),
+    ...(DATA.odcOdps||[]).map(o => ({...o, type:(o.tipe||'odc').toLowerCase(), badge: '['+(o.tipe||'ODC').toUpperCase()+']'})),
+    ...(DATA.pelanggan||[]).map(p => ({...p, type:'pelanggan', badge:'[ONT]', nama: p.nama || p.kode || 'Pelanggan #'+p.id})),
+    ...(DATA.ftthItems||[]).map(i => ({...i, type:'ftth_item', badge:'['+(i.kategori||'ITEM').toUpperCase()+']', nama: i.nama || i.kode || 'Item #'+i.id}))
+  ];
+
   if (!all.length) {
-    fromSel.innerHTML = '<option value="olt_1" data-nama="odc-c320-c1.">odc-c320-c1.</option>';
-    toSel.innerHTML = '<option value="odp_1" data-nama="odp-c320-c1-c1">odp-c320-c1-c1</option>';
+    fromSel.innerHTML = '<option value="olt_1" data-nama="olt hioso">[OLT] olt hioso</option>';
+    toSel.innerHTML = '<option value="odc_1" data-nama="odc hioso">[ODC] odc hioso</option>';
     autoGenCableLabel();
     return;
   }
 
-  var optionsHtml = all.map(n => `<option value="${n.type||'node'}_${n.id}" data-nama="${n.nama}">${n.nama || 'Node #'+n.id}</option>`).join('');
+  var optionsHtml = all.map(n => `<option value="${n.type}_${n.id}" data-nama="${n.nama}">${n.badge||''} ${n.nama || 'Node #'+n.id}</option>`).join('');
 
   fromSel.innerHTML = optionsHtml;
   toSel.innerHTML = optionsHtml;
 
-  var closestStart = findClosestNode(startPt[0], startPt[1]);
-  var closestEnd = findClosestNode(endPt[0], endPt[1]);
+  var closestStart = (startPt && startPt.length >= 2) ? findClosestNode(startPt[0], startPt[1]) : null;
+  var closestEnd = (endPt && endPt.length >= 2) ? findClosestNode(endPt[0], endPt[1]) : null;
 
-  if (closestStart) fromSel.value = `${closestStart.type||'node'}_${closestStart.id}`;
-  if (closestEnd && closestEnd !== closestStart) toSel.value = `${closestEnd.type||'node'}_${closestEnd.id}`;
-  else if (toSel.options.length > 1) toSel.selectedIndex = 1;
+  if (closestStart) {
+    var valStart = `${closestStart.type}_${closestStart.id}`;
+    if ([...fromSel.options].some(o => o.value === valStart)) {
+      fromSel.value = valStart;
+    } else {
+      fromSel.selectedIndex = 0;
+    }
+  } else {
+    fromSel.selectedIndex = 0;
+  }
+
+  if (closestEnd && closestEnd !== closestStart) {
+    var valEnd = `${closestEnd.type}_${closestEnd.id}`;
+    if ([...toSel.options].some(o => o.value === valEnd)) {
+      toSel.value = valEnd;
+    } else if (toSel.options.length > 1) {
+      toSel.selectedIndex = 1;
+    }
+  } else if (toSel.options.length > 1) {
+    toSel.selectedIndex = (fromSel.selectedIndex === 0) ? 1 : 0;
+  }
 
   autoGenCableLabel();
 }
@@ -2568,9 +2704,9 @@ function autoGenCableLabel() {
 }
 
 function finishDraw() {
-  cancelDraw(false);
   if (drawPts.length < 2) { showToast('Minimal 2 titik untuk membuat kabel!','er'); return; }
-  window.pendingCablePts = drawPts.slice(); drawPts = [];
+  window.pendingCablePts = drawPts.slice();
+  cancelDraw(true);
 
   var totalMeters = 0;
   for (var i = 0; i < window.pendingCablePts.length - 1; i++) {
@@ -2596,11 +2732,62 @@ function cancelDraw(clear=true) {
   drawActive = false;
   document.getElementById('draw-banner').classList.remove('show');
   MAP.getContainer().style.cursor = '';
-  if (clear) {
-    drawTmpMarkers.forEach(m=>MAP.removeLayer(m));
+  if (drawTmpMarkers && drawTmpMarkers.length) {
+    drawTmpMarkers.forEach(m => {
+      try { MAP.removeLayer(m); } catch(e){}
+    });
     drawTmpMarkers = [];
-    if (drawTmpLine) { MAP.removeLayer(drawTmpLine); drawTmpLine=null; }
+  }
+  if (drawTmpLine) {
+    try { MAP.removeLayer(drawTmpLine); } catch(e){}
+    drawTmpLine = null;
+  }
+  if (clear) {
     drawPts = [];
+  }
+}
+
+function onCableTypeSelectChange() {
+  var tipe = document.getElementById('nk-tipe')?.value || 'distribusi';
+  var colorMap = {
+    feeder: '#0284c7',        // Cyan
+    distribusi: '#d97706',    // Kuning/Orange
+    backbone: '#8b5cf6',      // Ungu
+    trunk: '#ec4899',         // Magenta
+    sub_distribusi: '#10b981',// Hijau Emerald
+    drop: '#2563eb'           // Biru
+  };
+  var color = colorMap[tipe] || '#d97706';
+  var textInput = document.getElementById('nk-color');
+  var pickerInput = document.getElementById('nk-color-picker');
+  if (textInput) textInput.value = color;
+  if (pickerInput) pickerInput.value = color;
+  updateCableRealtimePreview();
+}
+
+function updateCableRealtimePreview() {
+  var tipe = document.getElementById('nk-tipe')?.value || 'distribusi';
+  var colorInput = document.getElementById('nk-color')?.value?.trim();
+  
+  var colorMap = {
+    feeder: '#0284c7',        // Cyan
+    distribusi: '#d97706',    // Kuning/Orange
+    backbone: '#8b5cf6',      // Ungu
+    trunk: '#ec4899',         // Magenta
+    sub_distribusi: '#10b981',// Hijau Emerald
+    drop: '#2563eb'           // Biru
+  };
+
+  var selectedColor = colorInput || colorMap[tipe] || '#d97706';
+
+  var picker = document.getElementById('nk-color-picker');
+  if (picker && /^#[0-9A-F]{6}$/i.test(selectedColor)) {
+    picker.value = selectedColor;
+  }
+
+  // Update real-time polyline on map immediately if drawing line exists!
+  if (drawTmpLine) {
+    drawTmpLine.setStyle({ color: selectedColor });
   }
 }
 
@@ -2615,23 +2802,36 @@ async function submitNewKabel() {
   var fromParts = fromVal.split('_');
   var toParts = toVal.split('_');
 
-  showToast('Menyimpan kabel ke peta...','ok');
+  var colorMap = { feeder: '#0284c7', distribusi: '#d97706', backbone: '#8b5cf6', trunk: '#ec4899', sub_distribusi: '#10b981', drop: '#2563eb' };
+  var tipeVal = document.getElementById('nk-tipe')?.value || 'distribusi';
+  var colorVal = document.getElementById('nk-color')?.value?.trim() || colorMap[tipeVal];
+
+  var payload = {
+    label,
+    tipe: tipeVal,
+    color: colorVal,
+    monitoring_type: document.getElementById('nk-mon')?.value || 'manual',
+    from_type: fromParts[0] || 'olt',
+    from_id: parseInt(fromParts[1] || 1),
+    to_type: toParts[0] || 'odc',
+    to_id: parseInt(toParts[1] || 1),
+    jumlah_core: parseInt(document.getElementById('nk-core')?.value || 12),
+    catatan: document.getElementById('nk-cat')?.value || '',
+    geometry,
+  };
+
+  showToast(window.editingCableId ? 'Mengupdate kabel...' : 'Menyimpan kabel ke peta...','ok');
   try {
-    await api('POST',`${BASE}/ftth/api/kabel`,{
-      label,
-      tipe: document.getElementById('nk-tipe')?.value || 'distribusi',
-      monitoring_type: document.getElementById('nk-mon')?.value || 'manual',
-      from_type: fromParts[0] || 'olt',
-      from_id: parseInt(fromParts[1] || 1),
-      to_type: toParts[0] || 'odc',
-      to_id: parseInt(toParts[1] || 1),
-      jumlah_core: parseInt(document.getElementById('nk-core')?.value || 12),
-      catatan: document.getElementById('nk-cat')?.value || '',
-      geometry,
-    });
+    if (window.editingCableId) {
+      await api('PUT', `${BASE}/ftth/api/kabel/${window.editingCableId}`, payload);
+      showToast('Kabel "' + label + '" berhasil diupdate!','ok');
+      window.editingCableId = null;
+    } else {
+      await api('POST', `${BASE}/ftth/api/kabel`, payload);
+      showToast('Kabel "' + label + '" berhasil disimpan ke peta!','ok');
+    }
     window.pendingCablePts = null;
     closeModal('m-simpan-kabel');
-    showToast('Kabel "' + label + '" berhasil disimpan ke peta!','ok');
     loadAll(true);
   } catch(e) { showToast(e.message,'er'); }
 }
@@ -2700,18 +2900,23 @@ function openGoogleMaps(lat, lng) {
   window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
 }
 
-function sendWa(noWa, nama) {
+function sendWa(noWa, nama, status) {
+  if (!noWa) {
+    var pel = (DATA.pelanggan || []).find(p => p.nama === nama || p.nama_pelanggan === nama);
+    if (pel && pel.no_wa) noWa = pel.no_wa;
+  }
   if (!noWa) {
     showToast('Nomor WhatsApp belum diset untuk ' + (nama || 'pelanggan'), 'er');
     return;
   }
   var cleanNo = String(noWa).replace(/[^0-9]/g, '');
   if (cleanNo.startsWith('0')) cleanNo = '62' + cleanNo.slice(1);
-  window.open(`https://wa.me/${cleanNo}`, '_blank');
+  var msg = encodeURIComponent(`Halo Bpk/Ibu ${nama||'Pelanggan'},\n\nSistem FTTH Monitoring memberitahukan bahwa status koneksi internet Anda saat ini sedang: ${status || 'Gangguan / Offline'}.\nTim teknisi kami sedang melakukan pengecekan jalur jaringan. Terima kasih.`);
+  window.open(`https://wa.me/${cleanNo}?text=${msg}`, '_blank');
 }
 
 function openWaModal() {
-  openModal('m-telegram');
+  openModal('m-wa-config');
 }
 
 function openEditNode(type, id) {
@@ -2732,20 +2937,25 @@ function openEditNode(type, id) {
   document.getElementById('en-catatan').value = node.deskripsi || node.catatan || node.lokasi || node.alamat || '';
 
   var extraFg = document.getElementById('en-extra-fg');
+  var currentStatus = (node.status || 'offline').toLowerCase();
+  var statusHtml = `<div class="fg"><label>Status Operasional</label><select id="en-status" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;"><option value="offline" ${currentStatus==='offline'?'selected':''}>🔴 OFFLINE (Mati / Putus)</option><option value="online" ${currentStatus==='online'?'selected':''}>🟢 ONLINE (Aktif)</option></select></div>`;
+
   if (type === 'olt') {
     extraFg.innerHTML = `
       <div class="fg"><label>IP Address</label><input id="en-ip" type="text" value="${node.ip_address||''}"></div>
-      <div class="fg"><label>Kapasitas PON</label><input id="en-pon" type="number" value="${node.kapasitas_pon||16}"></div>`;
+      <div class="fg"><label>Kapasitas PON</label><input id="en-pon" type="number" value="${node.kapasitas_pon||16}"></div>
+      ${statusHtml}`;
   } else if (type === 'odc') {
-    extraFg.innerHTML = `<div class="fg"><label>Kapasitas Core</label><input id="en-core" type="number" value="${node.kapasitas_core||48}"></div>`;
+    extraFg.innerHTML = `<div class="fg"><label>Kapasitas Core</label><input id="en-core" type="number" value="${node.kapasitas_core||48}"></div>${statusHtml}`;
   } else if (type === 'odp') {
-    extraFg.innerHTML = `<div class="fg"><label>Kapasitas Port</label><input id="en-port" type="number" value="${node.kapasitas_port||16}"></div>`;
+    extraFg.innerHTML = `<div class="fg"><label>Kapasitas Port</label><input id="en-port" type="number" value="${node.kapasitas_port||16}"></div>${statusHtml}`;
   } else if (type === 'ont' || type === 'pelanggan') {
     extraFg.innerHTML = `
       <div class="fg"><label>Serial ONT / MAC</label><input id="en-serial" type="text" value="${node.serial_ont||''}"></div>
-      <div class="fg"><label>IP Address ONT</label><input id="en-ip" type="text" value="${node.ip_address||''}"></div>`;
+      <div class="fg"><label>IP Address ONT</label><input id="en-ip" type="text" value="${node.ip_address||''}"></div>
+      ${statusHtml}`;
   } else {
-    extraFg.innerHTML = '';
+    extraFg.innerHTML = statusHtml;
   }
 
   var titleEl = document.getElementById('en-title');
@@ -2767,9 +2977,9 @@ async function submitUpdateNode() {
   showToast('Menyimpan perubahan...', 'ok');
   try {
     if (type === 'item') {
-      await api('POST', `${BASE}/ftth/api/items`, {
-        id: parseInt(id), nama: nama, latitude: lat, longitude: lng, deskripsi: catatan
-      });
+      var itemPayload = { id: parseInt(id), nama: nama, latitude: lat, longitude: lng, deskripsi: catatan };
+      if (document.getElementById('en-status')) itemPayload.status = document.getElementById('en-status').value;
+      await api('POST', `${BASE}/ftth/api/items`, itemPayload);
     } else {
       var payload = { type: type, nama: nama, latitude: lat, longitude: lng, deskripsi: catatan, catatan: catatan };
       if (document.getElementById('en-ip')) payload.ip_address = document.getElementById('en-ip').value;
@@ -2777,6 +2987,7 @@ async function submitUpdateNode() {
       if (document.getElementById('en-pon')) payload.kapasitas_pon = parseInt(document.getElementById('en-pon').value);
       if (document.getElementById('en-core')) payload.kapasitas_core = parseInt(document.getElementById('en-core').value);
       if (document.getElementById('en-port')) payload.kapasitas_port = parseInt(document.getElementById('en-port').value);
+      if (document.getElementById('en-status')) payload.status = document.getElementById('en-status').value;
 
       await api('PUT', `${BASE}/ftth/api/node/${id}`, payload);
     }
@@ -2792,13 +3003,30 @@ async function submitUpdateNode() {
 function openEditKabel(id) {
   var k = DATA.kabels.find(x => x.id == id);
   if (!k) return;
+  window.editingCableId = k.id;
   document.getElementById('nk-label').value = k.label || '';
   document.getElementById('nk-tipe').value = k.tipe || 'distribusi';
   document.getElementById('nk-core').value = k.jumlah_core || 12;
   document.getElementById('nk-mon').value = k.monitoring_type || 'manual';
   document.getElementById('nk-cat').value = k.catatan || '';
+  if (k.color) {
+    var txt = document.getElementById('nk-color');
+    var picker = document.getElementById('nk-color-picker');
+    if (txt) txt.value = k.color;
+    if (picker) picker.value = k.color;
+  }
   window.pendingCablePts = k.geometry || [];
   openModal('m-simpan-kabel');
+
+  var fromSel = document.getElementById('nk-from');
+  var toSel = document.getElementById('nk-to');
+  if (fromSel && k.from_type && k.from_id) {
+    fromSel.value = `${k.from_type}_${k.from_id}`;
+  }
+  if (toSel && k.to_type && k.to_id) {
+    toSel.value = `${k.to_type}_${k.to_id}`;
+  }
+  autoGenCableLabel();
 }
 
 function openEditPopup(id) {
@@ -2864,27 +3092,38 @@ function initTrafficChart(id) {
   if (!canvas) return;
   if (trafficCharts[id]) { trafficCharts[id].destroy(); delete trafficCharts[id]; }
 
+  var node = DATA.pelanggan.find(p => p.id === id);
+  var isOnline = node ? (node.status === 'online') : true;
+
   var labels = Array.from({length:15},(_,i)=>i);
-  var txData = Array.from({length:15},()=>Math.random()*400+100);
-  var rxData = Array.from({length:15},()=>Math.random()*80+20);
+  var txData = Array.from({length:15},()=> isOnline ? (Math.random()*400+100) : 0);
+  var rxData = Array.from({length:15},()=> isOnline ? (Math.random()*80+20) : 0);
 
   trafficCharts[id] = new Chart(canvas, {
     type:'line',
     data:{
       labels,
       datasets:[
-        {label:'TX',data:txData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.15)',borderWidth:1.5,pointRadius:0,fill:true,tension:.4},
-        {label:'RX',data:rxData,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.1)',borderWidth:1.5,pointRadius:0,fill:true,tension:.4},
+        {label:'TX',data:txData,borderColor:isOnline?'#2563eb':'#dc2626',backgroundColor:isOnline?'rgba(37,99,235,.15)':'rgba(220,38,38,.05)',borderWidth:1.5,pointRadius:0,fill:true,tension:.4},
+        {label:'RX',data:rxData,borderColor:isOnline?'#16a34a':'#dc2626',backgroundColor:isOnline?'rgba(22,163,74,.1)':'rgba(220,38,38,.05)',borderWidth:1.5,pointRadius:0,fill:true,tension:.4},
       ]
     },
     options:{
       animation:false,responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{x:{display:false},y:{display:false,min:0}}
+      scales:{x:{display:false},y:{display:false,min:0,max:isOnline?undefined:100}}
     }
   });
 
   var tEl = document.getElementById('tr-val-'+id);
+  if (!isOnline) {
+    if (tEl) {
+      tEl.textContent = 'TX: 0.0 B · RX: 0.0 B (BERHENTI / OFFLINE)';
+      tEl.style.color = 'var(--red)';
+    }
+    return; // Completely stop animation timer when device is offline!
+  }
+
   var ti = setInterval(()=>{
     if (!document.getElementById('chart-'+id)) { clearInterval(ti); return; }
     var tx = Math.random()*600+100;
@@ -2913,15 +3152,22 @@ async function doPing() {
   addTermLine('Menjalankan ping... harap tunggu.','warn');
   try {
     var res = await api('POST', `${BASE}/ftth/api/ping`, {ip_address:ip});
-    var output = String(res.output || '');
-    output.split('\n').forEach(line => {
-      if (!line.trim()) return;
-      var cls = (line.toLowerCase().includes('timeout') || line.toLowerCase().includes('unreachable')) ? 'err' : '';
-      addTermLine(line, cls);
-    });
-    addTermLine(res.online ? 'HOST ONLINE' : 'HOST OFFLINE / TIMEOUT', res.online ? '' : 'err');
+    var lines = res.output_lines || (res.raw || '').split('\n');
+    if (Array.isArray(lines) && lines.length > 0) {
+      lines.forEach(line => {
+        if (!line.trim()) return;
+        var cls = (line.toLowerCase().includes('timeout') || line.toLowerCase().includes('unreachable') || line.toLowerCase().includes('expired') || line.toLowerCase().includes('100% loss')) ? 'err' : '';
+        addTermLine(line, cls);
+      });
+    }
+    var isOk = (res.reachable !== undefined) ? res.reachable : res.online;
+    addTermLine(isOk ? 'HOST ONLINE' : 'HOST OFFLINE / TIMEOUT', isOk ? '' : 'err');
+
+    // Auto update map data & sidebar status
+    if (typeof loadMapData === 'function') loadMapData();
   } catch(e) {
-    addTermLine('Error: '+e.message,'err');
+    addTermLine('HOST OFFLINE / TIMEOUT', 'err');
+    if (typeof loadMapData === 'function') loadMapData();
   }
 }
 
@@ -3087,10 +3333,11 @@ async function submitImportFile() {
 
 // ──────────────── OFFLINE PANEL ──────────────────────────────────────
 function renderOfflinePanel() {
-  var offline = DATA.pelanggan.filter(p => p.status === 'offline');
+  var offline = (DATA.pelanggan || []).filter(p => p.status === 'offline' || p.last_online_status == 0);
   offline.sort((a,b) => {
-    if (rpSort === 'terlama') return (a.last_inform_at||'').localeCompare(b.last_inform_at||'');
-    return (b.last_inform_at||'').localeCompare(a.last_inform_at||'');
+    var dateA = a.last_inform_at ? new Date(a.last_inform_at).getTime() : 0;
+    var dateB = b.last_inform_at ? new Date(b.last_inform_at).getTime() : 0;
+    return rpSort === 'terlama' ? (dateA - dateB) : (dateB - dateA);
   });
   var cnt = document.getElementById('offline-count'); if (cnt) cnt.textContent = offline.length;
   var listEl = document.getElementById('offline-list'); if (!listEl) return;
@@ -3111,6 +3358,37 @@ function setRpSort(s, btn) {
   document.getElementById('rp-terlama')?.classList.toggle('active', s==='terlama');
   document.getElementById('rp-terbaru')?.classList.toggle('active', s==='terbaru');
   renderOfflinePanel();
+}
+
+function exportCsv() {
+  if (!DATA || !DATA.pelanggan || !DATA.pelanggan.length) {
+    showToast('Data pelanggan belum siap', 'er');
+    return;
+  }
+  var headers = ["ID", "Kode Pelanggan", "Nama Pelanggan", "IP Address", "Status", "Latitude", "Longitude", "Inform Terakhir"];
+  var csvRows = [headers.join(";")];
+  DATA.pelanggan.forEach(p => {
+    csvRows.push([
+      p.id,
+      `"${String(p.kode||'').replace(/"/g, '""')}"`,
+      `"${String(p.nama||'').replace(/"/g, '""')}"`,
+      `"${String(p.ip_address||'').replace(/"/g, '""')}"`,
+      (p.status || 'offline').toUpperCase(),
+      p.lat || '',
+      p.lng || '',
+      `"${String(p.last_inform_at||'').replace(/"/g, '""')}"`
+    ].join(";"));
+  });
+  var csvContent = "\uFEFFsep=;\n" + csvRows.join("\r\n");
+  var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `FTTH_Data_Pelanggan_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Export CSV berhasil (Kolom rapi di Excel)', 'ok');
 }
 
 function offDuration(dt, isOffline) {
@@ -3167,8 +3445,12 @@ function renderKabelList() {
     var sc = {online:'s-on',warning:'s-wa',offline:'s-of'}[st]||'s-on';
     return `<div class="ni" id="si-kabel-${k.id}" onclick="flyToKabel(${k.id})">
       <div class="ni-dot" style="background:${String(k.color||colorOf(st))};"></div>
-      <div class="ni-name">${String(k.label||'Kabel')}</div>
-      <span class="ni-badge ${sc}">${String(k.tipe||'').slice(0,3).toUpperCase()}</span>
+      <div class="ni-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${String(k.label||'Kabel')}</div>
+      <span class="ni-badge ${sc}" style="margin-right:6px;">${String(k.tipe||'').slice(0,3).toUpperCase()}</span>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button onclick="event.stopPropagation(); openEditKabel(${k.id})" style="background:none;border:none;color:#0284c7;cursor:pointer;font-size:14px;padding:2px;" title="Edit / Ubah Arah Kabel"><i class="bx bx-edit"></i></button>
+        <button onclick="event.stopPropagation(); if(confirm('Hapus kabel ${k.label}?')) deleteKabel(${k.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px;" title="Hapus Kabel"><i class="bx bx-trash"></i></button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -3255,7 +3537,18 @@ function toggleLabels() {
 function toggleAnim() {
   animEnabled = !animEnabled;
   document.getElementById('mc-anim')?.classList.toggle('on', animEnabled);
-  showToast(animEnabled ? 'Animasi diaktifkan' : 'Animasi dinonaktifkan','ok');
+
+  Object.values(kabelReg).forEach(line => {
+    if (line._path) {
+      if (animEnabled) {
+        line._path.classList.add('animated-cable');
+      } else {
+        line._path.classList.remove('animated-cable');
+      }
+    }
+  });
+
+  showToast(animEnabled ? 'Animasi alur sinyal kabel diaktifkan ⚡' : 'Animasi kabel dinonaktifkan','ok');
 }
 
 function setMapMode(mode) {
@@ -3457,8 +3750,117 @@ function toggleModalFullscreen(modalId) {
   }
 }
 
+// ──────────────── DRAGGABLE LEGEND ───────────────────────────────────
+function makeLegendDraggable() {
+  var leg = document.getElementById('legend');
+  var hdr = document.getElementById('legend-hdr');
+  if (!leg || !hdr) return;
+
+  // Disable Leaflet's internal click/drag propagation on legend element!
+  if (typeof L !== 'undefined' && L.DomEvent) {
+    L.DomEvent.disableClickPropagation(leg);
+    L.DomEvent.disableScrollPropagation(leg);
+  }
+
+  // Restore saved position from localStorage
+  var savedPos = localStorage.getItem('ftth_legend_pos');
+  if (savedPos) {
+    try {
+      var pos = JSON.parse(savedPos);
+      if (pos.left !== undefined && pos.top !== undefined) {
+        leg.style.top = pos.top + 'px';
+        leg.style.left = pos.left + 'px';
+        leg.style.bottom = 'auto';
+        leg.style.right = 'auto';
+      }
+    } catch(e) {}
+  }
+
+  var isDragging = false;
+  var startX = 0, startY = 0, initialLeft = 0, initialTop = 0;
+
+  function startDrag(e) {
+    if (e.target.closest('button')) return;
+    isDragging = true;
+    hdr.style.cursor = 'grabbing';
+
+    var clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    var clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+    startX = clientX;
+    startY = clientY;
+
+    var rect = leg.getBoundingClientRect();
+    var parentRect = (leg.offsetParent || document.body).getBoundingClientRect();
+    initialLeft = rect.left - parentRect.left;
+    initialTop = rect.top - parentRect.top;
+
+    leg.style.bottom = 'auto';
+    leg.style.right = 'auto';
+    leg.style.left = initialLeft + 'px';
+    leg.style.top = initialTop + 'px';
+
+    if (e.cancelable) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+  }
+
+  function doDrag(e) {
+    if (!isDragging) return;
+    var clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    var clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+
+    var dx = clientX - startX;
+    var dy = clientY - startY;
+
+    var newLeft = initialLeft + dx;
+    var newTop = initialTop + dy;
+
+    var maxLeft = window.innerWidth - leg.offsetWidth - 10;
+    var maxTop = window.innerHeight - leg.offsetHeight - 10;
+
+    newLeft = Math.max(5, Math.min(newLeft, maxLeft));
+    newTop = Math.max(5, Math.min(newTop, maxTop));
+
+    leg.style.left = newLeft + 'px';
+    leg.style.top = newTop + 'px';
+
+    if (e.cancelable) e.preventDefault();
+  }
+
+  function stopDrag() {
+    if (isDragging) {
+      isDragging = false;
+      hdr.style.cursor = 'grab';
+      localStorage.setItem('ftth_legend_pos', JSON.stringify({
+        left: parseInt(leg.style.left || 0),
+        top: parseInt(leg.style.top || 0)
+      }));
+    }
+  }
+
+  hdr.addEventListener('mousedown', startDrag);
+  document.addEventListener('mousemove', doDrag);
+  document.addEventListener('mouseup', stopDrag);
+
+  hdr.addEventListener('touchstart', startDrag, {passive:false});
+  document.addEventListener('touchmove', doDrag, {passive:false});
+  document.addEventListener('touchend', stopDrag);
+}
+
+function toggleLegendMin() {
+  var content = document.getElementById('legend-content');
+  var icon = document.getElementById('leg-min-icon');
+  if (!content || !icon) return;
+  var isHidden = content.style.display === 'none';
+  content.style.display = isHidden ? 'block' : 'none';
+  icon.className = isHidden ? 'bx bx-minus' : 'bx bx-plus';
+}
+
 // ──────────────── START ────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', initMap);
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  makeLegendDraggable();
+});
 </script>
 </body>
 </html>

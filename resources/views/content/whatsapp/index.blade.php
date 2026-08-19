@@ -120,11 +120,10 @@
                 <div class="mb-3">
                     <label class="form-label">Metode Koneksi</label>
                     <select id="connectMethod" class="form-select">
-                        <option value="qr">Scan QR Code</option>
-                        <option value="pairing">Pairing Code (Input Nomor HP)</option>
+                        <option value="pairing" selected>Sambungkan ke WhatsApp sekarang</option>
                     </select>
                 </div>
-                <div id="pairingSection" style="display: none;">
+                <div id="pairingSection" style="display: block;">
                     <div class="mb-3">
                         <label class="form-label">Nomor WhatsApp (Format 628xxx)</label>
                         <input type="text" id="pairingPhone" class="form-control" placeholder="628123456789">
@@ -151,9 +150,13 @@
 </div>
 
 @section('page-script')
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
 <script>
+    if (typeof axios !== 'undefined') {
+        axios.defaults.headers.common['X-CSRF-TOKEN'] = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    }
     function showQrModal(qrData) {
         const modal = new bootstrap.Modal(document.getElementById('addSessionModal'));
         document.getElementById('newSessionId').value = "Active Session";

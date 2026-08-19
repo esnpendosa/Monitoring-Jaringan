@@ -39,38 +39,10 @@
       "permission": "pelanggan_manage"
     },
     {
-      "url": "/map-pelanggan",
-      "name": "Web GIS Pelanggan",
-      "icon": "menu-icon icon-base bx bx-map-alt",
-      "slug": "pelanggan-map",
-      "permission": "pelanggan_manage"
-    },
-    {
-      "url": "/odc-odp",
-      "name": "Titik ODC & ODP",
-      "icon": "menu-icon icon-base bx bx-layer",
-      "slug": "odc-odp",
-      "permission": "pelanggan_manage"
-    },
-    {
       "url": "/ftth",
       "name": "FTTH Network Manager",
       "icon": "menu-icon icon-base bx bx-map-pin",
       "slug": "ftth",
-      "permission": "pelanggan_manage"
-    },
-    {
-      "url": "/olt",
-      "name": "Manajemen OLT",
-      "icon": "menu-icon icon-base bx bx-server",
-      "slug": "olt",
-      "permission": "pelanggan_manage"
-    },
-    {
-      "url": "/kabel",
-      "name": "Manajemen Kabel",
-      "icon": "menu-icon icon-base bx bx-cable-car",
-      "slug": "kabel",
       "permission": "pelanggan_manage"
     },
     {

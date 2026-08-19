@@ -21,8 +21,8 @@
       <div class="d-flex align-items-end row">
         <div class="col-sm-7">
           <div class="card-body">
-            <h5 class="card-title text-primary">Selamat Datang, {{ auth()->user()->name }}! 🎓</h5>
-            <p class="mb-4">Sistem Manajemen Jaringan WiFi Berbasis Web GIS (Rozitech). <br> Penelitian Skripsi oleh Muhammad As'ad Muhibbin Akbar.</p>
+            <h5 class="card-title text-primary">Selamat Datang, {{ auth()->user()->name }}!</h5>
+            <p class="mb-4">Sistem Manajemen Jaringan WiFi Berbasis Web GIS (Rozitech). <br> Aplikasi Manajemen & Monitoring Jaringan oleh Rozitech.</p>
 
             <a href="{{ route('pelanggan.index') }}" class="btn btn-sm btn-outline-primary">Lihat Pelanggan</a>
           </div>
@@ -238,10 +238,10 @@
       <div class="card-header d-flex align-items-center justify-content-between">
         <h5 class="card-title m-0">Sebaran Pelanggan (Web GIS)</h5>
         <div>
-          <span class="badge bg-success me-1">Online</span>
-          <span class="badge bg-warning me-1">Offline</span>
-          <span class="badge bg-danger me-1">Isolir</span>
-          <span class="badge bg-primary">Perbaikan</span>
+          <span class="badge bg-success me-1" id="badge-filter-online" onclick="filterWidgetMap('online')" style="cursor:pointer;transition:all .2s;" title="Klik untuk filter Online">Online</span>
+          <span class="badge bg-warning me-1" id="badge-filter-offline" onclick="filterWidgetMap('offline')" style="cursor:pointer;transition:all .2s;" title="Klik untuk filter Offline">Offline</span>
+          <span class="badge bg-danger me-1" id="badge-filter-isolir" onclick="filterWidgetMap('isolir')" style="cursor:pointer;transition:all .2s;" title="Klik untuk filter Isolir">Isolir</span>
+          <span class="badge bg-primary" id="badge-filter-perbaikan" onclick="filterWidgetMap('perbaikan')" style="cursor:pointer;transition:all .2s;" title="Klik untuk filter Perbaikan">Perbaikan</span>
         </div>
       </div>
       <div class="card-body p-0">
@@ -279,43 +279,60 @@
   </div>
 </div>
 
+<style>
+  .leaflet-control-attribution { display: none !important; }
+</style>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
-    var map = L.map('map').setView([-7.1207, 112.5959], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+    var map = L.map('map', { attributionControl: false }).setView([-7.1207, 112.5959], 15);
+    L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      attribution: '',
+      maxZoom: 20
     }).addTo(map);
 
     var customers = @json($pelangganMap);
+    var activeWidgetFilter = null;
+    var allWidgetMarkers = [];
+    var allBounds = [];
 
+    // Render initial Pelanggan markers synchronously from database
     customers.forEach(function(c) {
       if (!c.latitude || !c.longitude) return;
+      var lat = parseFloat(c.latitude);
+      var lng = parseFloat(c.longitude);
+      if (isNaN(lat) || isNaN(lng)) return;
 
-      // Warna sama persis dengan Web GIS Pelanggan
-      var color = '#28a745'; // Online - Hijau
-      if (c.status_gis === 'offline')   color = '#ffc107'; // Offline - Kuning
-      if (c.status_gis === 'timeout')   color = '#dc3545'; // Isolir - Merah
-      if (c.status_gis === 'perbaikan') color = '#007bff'; // Perbaikan - Biru
+      allBounds.push([lat, lng]);
+
+      var status = c.status_gis || 'online';
+      if (c.last_online_status == 0 || c.status === 'offline') {
+        status = 'offline';
+      }
+
+      var color = '#16a34a'; // Online
+      if (status === 'offline') color = '#dc2626'; // Offline Merah
+      else if (status === 'timeout') color = '#ef4444'; // Isolir Merah
+      else if (status === 'perbaikan') color = '#007bff'; // Perbaikan Biru
 
       var statusLabel = '🟢 ONLINE';
-      if (c.status_gis === 'offline')   statusLabel = '🟡 OFFLINE (LOSS)';
-      if (c.status_gis === 'timeout')   statusLabel = '🔴 ISOLIR';
-      if (c.status_gis === 'perbaikan') statusLabel = '🔵 PERBAIKAN';
+      if (status === 'offline') statusLabel = '🔴 OFFLINE / PUTUS';
+      else if (status === 'timeout') statusLabel = '🔴 ISOLIR';
+      else if (status === 'perbaikan') statusLabel = '🔵 PERBAIKAN';
+
+      var marker = L.circleMarker([lat, lng], {
+        radius: 9,
+        fillColor: color,
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.95
+      }).addTo(map);
 
       var tagihanInfo = c.tagihan && c.tagihan.length > 0
         ? (['unpaid','belum_bayar'].includes(c.tagihan[0].status) ? '❌ BELUM BAYAR' : '✅ LUNAS')
         : 'Tidak ada';
-
-      var marker = L.circleMarker([c.latitude, c.longitude], {
-        radius: 9,
-        fillColor: color,
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.9
-      });
 
       marker.bindPopup(`
         <div style="min-width:200px;">
@@ -324,20 +341,142 @@
           <p class="mb-1 small">Status: <strong>${statusLabel}</strong></p>
           <hr class="my-1">
           <p class="mb-1 small">Tagihan: ${tagihanInfo}</p>
-          <p class="mb-2 small">${c.alamat}</p>
+          <p class="mb-2 small">${c.alamat||'-'}</p>
           <div class="d-flex justify-content-between align-items-center">
-            <a href="https://www.google.com/maps?q=${c.latitude},${c.longitude}" target="_blank" style="font-size:10px;" class="btn btn-xs btn-outline-secondary">🗺️ Maps</a>
+            <a href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" style="font-size:10px;" class="btn btn-xs btn-outline-secondary">🗺️ Maps</a>
             <a href="/pelanggan/${c.id_pelanggan}/edit" style="padding:2px 5px;font-size:10px;color:white;" class="btn btn-xs btn-primary">Edit</a>
           </div>
         </div>
       `);
 
-      marker.addTo(map);
+      allWidgetMarkers.push({ marker: marker, status: status, lat: lat, lng: lng });
     });
 
-    // Fit map to all markers
-    var bounds = customers.filter(c => c.latitude && c.longitude).map(c => [c.latitude, c.longitude]);
-    if (bounds.length > 0) map.fitBounds(bounds, { padding: [30, 30] });
+    // Fit bounds immediately on page load
+    if (allBounds.length > 0) {
+      map.fitBounds(allBounds, { padding: [40, 40], maxZoom: 18 });
+    }
+
+    setTimeout(() => {
+      map.invalidateSize();
+      if (allBounds.length > 0) {
+        map.fitBounds(allBounds, { padding: [40, 40], maxZoom: 18 });
+      }
+    }, 300);
+
+    // Interactive Legend Filter Handler
+    window.filterWidgetMap = function(status) {
+      if (activeWidgetFilter === status) {
+        activeWidgetFilter = null;
+      } else {
+        activeWidgetFilter = status;
+      }
+
+      ['online','offline','isolir','perbaikan'].forEach(st => {
+        var el = document.getElementById('badge-filter-' + st);
+        if (el) {
+          if (activeWidgetFilter === st) {
+            el.style.opacity = '1';
+            el.style.transform = 'scale(1.1)';
+            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+          } else if (activeWidgetFilter !== null) {
+            el.style.opacity = '0.45';
+            el.style.transform = 'none';
+            el.style.boxShadow = 'none';
+          } else {
+            el.style.opacity = '1';
+            el.style.transform = 'none';
+            el.style.boxShadow = 'none';
+          }
+        }
+      });
+
+      var visibleBounds = [];
+      allWidgetMarkers.forEach(item => {
+        var show = true;
+        if (activeWidgetFilter) {
+          if (activeWidgetFilter === 'online') show = (item.status === 'online');
+          else if (activeWidgetFilter === 'offline') show = (item.status === 'offline');
+          else if (activeWidgetFilter === 'isolir') show = (item.status === 'isolir' || item.status === 'timeout');
+          else if (activeWidgetFilter === 'perbaikan') show = (item.status === 'perbaikan');
+        }
+
+        if (show) {
+          if (!map.hasLayer(item.marker)) map.addLayer(item.marker);
+          visibleBounds.push([item.lat, item.lng]);
+        } else {
+          if (map.hasLayer(item.marker)) map.removeLayer(item.marker);
+        }
+      });
+
+      if (visibleBounds.length > 0) {
+        map.fitBounds(visibleBounds, { padding: [40, 40], maxZoom: 18 });
+      } else if (allBounds.length > 0) {
+        map.fitBounds(allBounds, { padding: [40, 40], maxZoom: 18 });
+      }
+    };
+
+    // Load OLT, ODC, ODP, & Cables asynchronously
+    fetch("{{ route('ftth.api.nodes') }}", {headers:{Accept:'application/json'}})
+      .then(r => r.json())
+      .then(data => {
+        if (!data.success) return;
+
+        // Render Cables
+        (data.kabels || []).forEach(k => {
+          if (k.geometry && k.geometry.length > 1) {
+            L.polyline(k.geometry, {
+              color: k.color || '#d97706',
+              weight: 4,
+              opacity: 0.85,
+              dashArray: k.status === 'offline' ? '8,6' : null
+            }).addTo(map).bindTooltip(k.label || 'Kabel FTTH', {permanent: false});
+          }
+        });
+
+        // Render OLT
+        (data.olts || []).forEach(o => {
+          if (o.lat && o.lng) {
+            allBounds.push([o.lat, o.lng]);
+            L.marker([o.lat, o.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: `<div style="background:#2563eb;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.4);"><i class="bx bx-server"></i></div>`,
+                iconSize: [26, 26], iconAnchor: [13, 13]
+              })
+            }).addTo(map).bindPopup(`<b>OLT: ${o.nama}</b><br>IP: ${o.ip_address||'-'}`);
+          }
+        });
+
+        // Render ODC
+        (data.odcOdps || []).filter(x => x.tipe === 'ODC').forEach(o => {
+          if (o.lat && o.lng) {
+            allBounds.push([o.lat, o.lng]);
+            L.marker([o.lat, o.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: `<div style="background:#f97316;color:#fff;border-radius:6px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.4);"><i class="bx bx-cube-alt"></i></div>`,
+                iconSize: [24, 24], iconAnchor: [12, 12]
+              })
+            }).addTo(map).bindPopup(`<b>ODC: ${o.nama}</b><br>Core: ${o.kapasitas_core||'-'}`);
+          }
+        });
+
+        // Render ODP
+        (data.odcOdps || []).filter(x => x.tipe === 'ODP').forEach(o => {
+          if (o.lat && o.lng) {
+            allBounds.push([o.lat, o.lng]);
+            L.marker([o.lat, o.lng], {
+              icon: L.divIcon({
+                className: '',
+                html: `<div style="background:#eab308;color:#fff;border-radius:6px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,0.4);"><i class="bx bx-box"></i></div>`,
+                iconSize: [22, 22], iconAnchor: [11, 11]
+              })
+            }).addTo(map).bindPopup(`<b>ODP: ${o.nama}</b><br>Port: ${o.kapasitas_port||'-'}`);
+          }
+        });
+      })
+      .catch(err => console.error('Dashboard map async fetch error:', err));
   });
 </script>
 @endsection

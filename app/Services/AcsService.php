@@ -153,7 +153,9 @@ class AcsService
             $rows = DB::table('acs_devices')->get();
             $parsed = [];
             foreach ($rows as $r) {
-                $diffMin = $r->last_inform_at ? now()->diffInMinutes(\Carbon\Carbon::parse($r->last_inform_at)) : 1;
+                $lastInform = $r->last_inform_at ? Carbon::parse($r->last_inform_at) : null;
+                $diffMin = $lastInform ? abs($lastInform->diffInMinutes(now())) : 9999;
+                $isOnline = ($lastInform && $diffMin < 5) ? (bool)$r->is_online : false;
                 $parsed[] = [
                     'serial_id'    => $r->serial_number,
                     'manufacturer' => $r->manufacturer ?: 'Huawei',
@@ -165,7 +167,7 @@ class AcsService
                     'rx_power'     => $r->rx_power ?: -14.0,
                     'last_inform'  => $r->last_inform_at ?: now()->toIso8601String(),
                     'minutes_ago'  => $diffMin,
-                    'is_online'    => (bool) $r->is_online,
+                    'is_online'    => $isOnline,
                 ];
             }
 
@@ -197,13 +199,14 @@ class AcsService
 
                 if (!$serialId) continue;
 
-                $pelanggan = Pelanggan::where('serial_ont', $serialId)->first();
+                $shortSerial = preg_replace('/^.*-/', '', $serialId);
+                $pelanggan = Pelanggan::where('serial_ont', $serialId)->orWhere('serial_ont', 'LIKE', "%{$shortSerial}%")->first();
                 if (!$pelanggan) continue;
 
                 $pelanggan->update([
                     'last_inform_at'     => $lastInform ? Carbon::parse($lastInform) : null,
                     'onu_rx_power'       => $rxPower ?: $pelanggan->onu_rx_power,
-                    'last_online_status' => $isOnline ? 'online' : 'offline',
+                    'last_online_status' => $isOnline ? 1 : 0,
                 ]);
 
                 $updated++;
@@ -270,7 +273,7 @@ class AcsService
                 'uptime_sec'       => $r->uptime_sec ?: 86400,
                 'uptime_formatted' => '1d 00h',
                 'last_inform'      => $r->last_inform_at ?: now()->toIso8601String(),
-                'is_online'        => (bool) $r->is_online,
+                'is_online'        => ($r->last_inform_at && abs(Carbon::parse($r->last_inform_at)->diffInMinutes(now())) < 5) ? (bool)$r->is_online : false,
                 'connected_clients'=> $clients,
                 'raw_parameters'   => $rawParams,
             ];
@@ -290,8 +293,8 @@ class AcsService
         $diffMin    = null;
 
         if ($lastInform) {
-            $diffMin  = now()->diffInMinutes(Carbon::parse($lastInform));
-            $isOnline = $diffMin < 10;
+            $diffMin  = abs(now()->diffInMinutes(Carbon::parse($lastInform)));
+            $isOnline = $diffMin < 5;
         }
 
         $rxPower = $this->extractOpticalRxPower($d);

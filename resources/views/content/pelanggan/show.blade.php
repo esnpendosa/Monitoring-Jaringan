@@ -146,7 +146,12 @@
                 <h4 class="mb-1">{{ $pelanggan->nama_pelanggan }}</h4>
                 <div class="mb-3">
                     <span class="badge bg-label-info">{{ $pelanggan->kode_pelanggan }}</span>
-                    <span class="badge {{ $pelanggan->is_active ? 'bg-label-success' : 'bg-label-danger' }}">{{ $pelanggan->is_active ? 'Active' : 'Isolated' }}</span>
+                    @if($pelanggan->is_online)
+                        <span class="badge bg-label-success"><i class="bx bx-wifi me-1"></i>Online</span>
+                    @else
+                        <span class="badge bg-label-danger"><i class="bx bx-wifi-off me-1"></i>Offline</span>
+                    @endif
+                    <span class="badge {{ $pelanggan->is_active ? 'bg-label-success' : 'bg-label-secondary' }}">{{ $pelanggan->is_active ? 'Active' : 'Nonaktif' }}</span>
                 </div>
                 
                 <div class="row mt-4 g-2">
@@ -255,11 +260,13 @@
                             </div>
                             <div>
                                 <small class="text-muted d-block">Uptime</small>
-                                <span class="fw-bold text-success">
-                                    @if($mikrotikData && isset($mikrotikData['active']['uptime']) && $mikrotikData['active']['uptime'] !== 'Offline' && $mikrotikData['active']['uptime'] !== 'Disconnected')
+                                <span class="fw-bold {{ $pelanggan->is_online ? 'text-success' : 'text-danger' }}">
+                                    @if($pelanggan->is_online && $mikrotikData && isset($mikrotikData['active']['uptime']) && !in_array($mikrotikData['active']['uptime'], ['Offline', 'Disconnected']))
                                         {{ $mikrotikData['active']['uptime'] }}
+                                    @elseif($pelanggan->is_online)
+                                        Connected (Online)
                                     @else
-                                        {{ $pelanggan->is_active ? 'Connected' : 'Offline' }}
+                                        Offline / Terputus
                                     @endif
                                 </span>
                             </div>
@@ -283,10 +290,17 @@
             <div class="card-header d-flex justify-content-between align-items-center bg-transparent py-3 border-bottom">
                 <h5 class="mb-0 text-dark fw-bold"><i class="bx bx-tachometer me-2 text-primary fs-4"></i> Monitor Kecepatan Real-time</h5>
                 <div class="d-flex align-items-center">
+                    @if($pelanggan->is_online)
                     <span class="badge bg-label-success px-3 py-2 d-flex align-items-center shadow-sm" style="font-weight: 600;">
                         <span class="status-pulse me-2"></span>
                         ONLINE & OPTIMAL
                     </span>
+                    @else
+                    <span class="badge bg-label-danger px-3 py-2 d-flex align-items-center shadow-sm" style="font-weight: 600;">
+                        <i class="bx bx-wifi-off me-2"></i>
+                        OFFLINE / TERPUTUS
+                    </span>
+                    @endif
                 </div>
             </div>
             <div class="card-body py-4 position-relative d-flex flex-column align-items-center justify-content-center">
@@ -313,7 +327,9 @@
                             <h1 id="speed-number" class="display-4 fw-extrabold text-primary mb-0 me-1" style="font-weight: 800; text-shadow: 0 4px 12px rgba(105, 108, 255, 0.15);">0.0</h1>
                             <span class="fw-bold text-dark" style="font-size: 13px;">Mbps</span>
                         </div>
-                        <span id="speed-indicator-text" class="badge bg-label-info mt-1 px-2 py-1" style="font-size: 9px; font-weight: 600;"><i class="bx bx-wifi me-1"></i> CONNECTED</span>
+                        <span id="speed-indicator-text" class="badge {{ $pelanggan->is_online ? 'bg-label-info' : 'bg-label-danger' }} mt-1 px-2 py-1" style="font-size: 9px; font-weight: 600;">
+                            <i class="bx {{ $pelanggan->is_online ? 'bx-wifi' : 'bx-wifi-off' }} me-1"></i> {{ $pelanggan->is_online ? 'CONNECTED' : 'DISCONNECTED / OFFLINE' }}
+                        </span>
                     </div>
                 </div>
 
@@ -405,9 +421,21 @@
         const dlProgress = document.getElementById('download-progress-bar');
         const ulProgress = document.getElementById('upload-progress-bar');
 
+        const isOnline = {{ $pelanggan->is_online ? 'true' : 'false' }};
         const totalPathLength = 377; // stroke-dasharray value
 
         function animateSpeed() {
+            if (!isOnline) {
+                speedTextEl.innerText = '0.0';
+                dlTextEl.innerText = '0.0 Mbps';
+                ulTextEl.innerText = '0.0 Mbps';
+                pingTextEl.innerText = 'Timeout / Offline';
+                dlProgress.style.width = '0%';
+                ulProgress.style.width = '0%';
+                arcEl.style.strokeDashoffset = totalPathLength;
+                return;
+            }
+
             // Generate micro-fluctuations (90% to 98% of baseSpeed)
             const randomFactor = 0.90 + (Math.random() * 0.08);
             const currentDl = (baseSpeed * randomFactor).toFixed(1);
@@ -431,7 +459,6 @@
             ulProgress.style.width = Math.min(ulPercent, 100) + '%';
 
             // Update SVG speedometer arc dashoffset
-            // 0% speed = offset 377, 100% speed = offset 0
             const percentageOfMaxSpeed = Math.min(currentDl / (baseSpeed * 1.1), 1);
             const dashOffset = totalPathLength - (totalPathLength * percentageOfMaxSpeed);
             arcEl.style.strokeDashoffset = dashOffset;

@@ -36,12 +36,37 @@ class FtthMapController extends Controller
     /** Ambil semua node + kabel sekaligus */
     public function apiNodes()
     {
-        $olts = Olt::all()->map(fn($o) => [
-            'type' => 'olt', 'id' => $o->id,
-            'nama' => $o->nama, 'lat' => (float)$o->latitude, 'lng' => (float)$o->longitude,
-            'status' => $o->status ?? 'online', 'ip_address' => $o->ip_address,
-            'kapasitas_pon' => $o->kapasitas_pon, 'lokasi' => $o->lokasi,
-        ]);
+        $olts = Olt::all()->map(function($o) {
+            $status = strtolower($o->status ?? 'offline');
+            if ($o->ip_address) {
+                $pingSuccess = false;
+                $fp = @fsockopen($o->ip_address, 80, $errno, $errstr, 0.3)
+                   || @fsockopen($o->ip_address, 22, $errno, $errstr, 0.3)
+                   || @fsockopen($o->ip_address, 23, $errno, $errstr, 0.3)
+                   || @fsockopen($o->ip_address, 8080, $errno, $errstr, 0.3);
+
+                if ($fp) {
+                    @fclose($fp);
+                    $pingSuccess = true;
+                }
+
+                $status = $pingSuccess ? 'online' : 'offline';
+
+                // Sync status to database automatically if changed
+                if ($o->status !== $status) {
+                    $o->update(['status' => $status]);
+                }
+            } else {
+                $status = 'offline';
+            }
+
+            return [
+                'type' => 'olt', 'id' => $o->id,
+                'nama' => $o->nama, 'lat' => (float)$o->latitude, 'lng' => (float)$o->longitude,
+                'status' => $status, 'ip_address' => $o->ip_address,
+                'kapasitas_pon' => $o->kapasitas_pon, 'lokasi' => $o->lokasi,
+            ];
+        });
 
         $odcOdps = OdcOdp::with(['olt','parent'])->get()->map(fn($o) => [
             'type' => strtolower($o->tipe), 'id' => $o->id,
@@ -54,22 +79,33 @@ class FtthMapController extends Controller
 
         $pelanggan = Pelanggan::whereNotNull('latitude')->whereNotNull('longitude')
             ->with('odp')
-            ->get()->map(fn($p) => [
-                'type'             => 'pelanggan',
-                'id'               => $p->id_pelanggan,
-                'nama'             => $p->nama_pelanggan,
-                'lat'              => (float)$p->latitude,
-                'lng'              => (float)$p->longitude,
-                'status'           => ($p->last_online_status == 1 || $p->last_online_status === 'online' || $p->last_online_status === null) ? 'online' : 'offline',
-                'kode'             => $p->kode_pelanggan,
-                'ip_address'       => $p->ip_address,
-                'serial_ont'       => $p->serial_ont,
-                'onu_rx_power'     => $p->onu_rx_power,
-                'onu_rx_baseline'  => $p->baseline_rx_power ?: -19.5,
-                'last_inform_at'   => $p->last_inform_at ? $p->last_inform_at->toIso8601String() : now()->toIso8601String(),
-                'odp_id'           => $p->odp_id,
-                'alamat'           => $p->alamat,
-            ]);
+            ->get()->map(function($p) {
+                $isOnline = false;
+                if ($p->last_online_status === 'online' || $p->last_online_status == 1 || $p->last_online_status === true) {
+                    $isOnline = true;
+                    // Double check if last_inform_at is stale (>10 min ago)
+                    if ($p->last_inform_at && \Carbon\Carbon::parse($p->last_inform_at)->diffInMinutes(now()) > 10) {
+                        $isOnline = false;
+                    }
+                }
+
+                return [
+                    'type'             => 'pelanggan',
+                    'id'               => $p->id_pelanggan,
+                    'nama'             => $p->nama_pelanggan,
+                    'lat'              => (float)$p->latitude,
+                    'lng'              => (float)$p->longitude,
+                    'status'           => $isOnline ? 'online' : 'offline',
+                    'kode'             => $p->kode_pelanggan,
+                    'ip_address'       => $p->ip_address,
+                    'serial_ont'       => $p->serial_ont,
+                    'onu_rx_power'     => $p->onu_rx_power,
+                    'onu_rx_baseline'  => $p->baseline_rx_power ?: -19.5,
+                    'last_inform_at'   => $p->last_inform_at ? \Carbon\Carbon::parse($p->last_inform_at)->toIso8601String() : null,
+                    'odp_id'           => $p->odp_id,
+                    'alamat'           => $p->alamat,
+                ];
+            });
 
         $kabels = Kabel::all()->map(fn($k) => [
             'id' => $k->id, 'label' => $k->label,
@@ -79,7 +115,7 @@ class FtthMapController extends Controller
             'to_type' => $k->to_type, 'to_id' => $k->to_id,
             'geometry' => $k->geometry,
             'jumlah_core' => $k->jumlah_core, 'status' => $k->status ?? 'online',
-            'color' => $k->polyline_color,
+            'color' => $k->color ?? null,
             'redaman_db' => $k->redaman_db, 'titik_putus_meter' => $k->titik_putus_meter,
             'catatan' => $k->catatan, 'updated_by' => $k->updated_by,
             'updated_at' => $k->updated_at?->format('d/m/Y H:i'),
@@ -257,19 +293,21 @@ class FtthMapController extends Controller
     public function storeKabel(Request $request)
     {
         $data = $request->validate([
-            'label' => 'required|string', 'tipe' => 'required|in:feeder,distribusi,drop',
+            'label' => 'required|string', 'tipe' => 'required|string',
+            'color' => 'nullable|string',
             'monitoring_type' => 'required|in:realtime,manual',
             'from_type' => 'required|string', 'from_id' => 'required|integer',
             'to_type' => 'required|string', 'to_id' => 'required|integer',
             'geometry' => 'required|array', 'jumlah_core' => 'nullable|integer',
             'catatan' => 'nullable|string',
         ]);
+        $data['color'] = $request->input('color') ?: null;
         $data['updated_by'] = Auth::user()->name ?? 'system';
         $kabel = Kabel::create($data);
         return response()->json(['success' => true, 'kabel' => [
             'id' => $kabel->id, 'label' => $kabel->label,
             'tipe' => $kabel->tipe, 'status' => $kabel->status,
-            'color' => $kabel->polyline_color, 'geometry' => $kabel->geometry,
+            'color' => $kabel->color, 'geometry' => $kabel->geometry,
             'monitoring_type' => $kabel->monitoring_type,
             'jumlah_core' => $kabel->jumlah_core, 'catatan' => $kabel->catatan,
         ]]);
@@ -279,10 +317,10 @@ class FtthMapController extends Controller
     public function updateKabel(Request $request, Kabel $kabel)
     {
         $kabel->update(array_merge(
-            $request->only(['label','tipe','monitoring_type','jumlah_core','status','catatan','titik_putus_meter']),
+            $request->only(['label','tipe','color','monitoring_type','jumlah_core','status','catatan','titik_putus_meter']),
             ['updated_by' => Auth::user()->name ?? 'system']
         ));
-        return response()->json(['success' => true, 'color' => $kabel->polyline_color]);
+        return response()->json(['success' => true, 'color' => $kabel->color]);
     }
 
     /** Hapus kabel via API */

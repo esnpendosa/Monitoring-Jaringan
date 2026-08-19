@@ -14,6 +14,7 @@ class Kabel extends Model
     protected $fillable = [
         'label',
         'tipe',
+        'color',
         'monitoring_type',
         'from_type',
         'from_id',

@@ -63,7 +63,6 @@
           <th>Paket maks</th>
           <th>Status</th>
           <th>WA</th>
-          <th>Prioritas</th>
           <th>Aksi</th>
         </tr>
       </thead>
@@ -86,12 +85,19 @@
           <td>{{ $p->jumlah_device }}</td>
           <td><span class="badge bg-label-primary">{{ $p->paket ?? '-' }}</span></td>
           <td>
-            <form action="{{ route('pelanggan.toggle-status', $p->id_pelanggan) }}" method="POST" class="d-inline">
-              @csrf
-              <div class="form-check form-switch d-inline-block">
-                <input class="form-check-input" type="checkbox" role="switch" onchange="this.form.submit()" style="cursor: pointer; width: 2.5em; height: 1.25em;" {{ $p->is_active ? 'checked' : '' }} title="{{ $p->is_active ? 'Klik untuk Nonaktifkan' : 'Klik untuk Aktifkan' }}">
-              </div>
-            </form>
+            <div class="d-flex align-items-center gap-2">
+              @if($p->is_online)
+                <span class="badge bg-success" style="font-size:10px;"><i class="bx bx-wifi me-1"></i>ONLINE</span>
+              @else
+                <span class="badge bg-danger" style="font-size:10px;"><i class="bx bx-wifi-off me-1"></i>OFFLINE</span>
+              @endif
+              <form action="{{ route('pelanggan.toggle-status', $p->id_pelanggan) }}" method="POST" class="d-inline">
+                @csrf
+                <div class="form-check form-switch d-inline-block">
+                  <input class="form-check-input" type="checkbox" role="switch" onchange="this.form.submit()" style="cursor: pointer; width: 2.2em; height: 1.1em;" {{ $p->is_active ? 'checked' : '' }} title="{{ $p->is_active ? 'Status Akun: Aktif' : 'Status Akun: Nonaktif' }}">
+                </div>
+              </form>
+            </div>
           </td>
           <td>
             <form action="{{ route('pelanggan.toggle-wa', $p->id_pelanggan) }}" method="POST" class="d-inline">
@@ -100,12 +106,6 @@
                 <input class="form-check-input" type="checkbox" role="switch" onchange="this.form.submit()" style="cursor: pointer; width: 2.5em; height: 1.25em; {{ $p->wa_active ? 'background-color: #25d366; border-color: #25d366;' : '' }}" {{ $p->wa_active ? 'checked' : '' }} title="{{ $p->wa_active ? 'Klik untuk Matikan WA' : 'Klik untuk Aktifkan WA' }}">
               </div>
             </form>
-          </td>
-          <td>
-            @php
-              $badge = ($p->prioritas_label == 'High' || $p->prioritas_label == 'Medium') ? 'bg-label-danger' : 'bg-label-success';
-            @endphp
-            <span class="badge {{ $badge }}">{{ $p->prioritas_label ?? 'Low' }}</span>
           </td>
           <td>
             <div class="d-inline-flex gap-1 align-items-center">

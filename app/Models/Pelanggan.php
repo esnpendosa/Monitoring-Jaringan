@@ -47,6 +47,15 @@ class Pelanggan extends Model
         'last_inform_at',
     ];
 
+    public function getIsOnlineAttribute(): bool
+    {
+        if (!$this->last_inform_at) {
+            return (bool) $this->last_online_status;
+        }
+        $diffMin = abs(now()->diffInMinutes(\Carbon\Carbon::parse($this->last_inform_at)));
+        return ($diffMin < 5) && (bool) $this->last_online_status;
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class, 'id_user', 'id');

@@ -103,9 +103,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/pelanggan/{pelanggan}/ping', [PelangganController::class, 'pingPelanggan'])->name('pelanggan.ping');
         Route::get('pelanggan/{pelanggan}/delete-direct', [PelangganController::class, 'destroyDirect'])->name('pelanggan.destroy-direct');
         Route::resource('pelanggan', PelangganController::class);
-        Route::resource('odc-odp', OdcOdpController::class);
+        Route::get('odc-odp', function() { return redirect()->route('ftth.dashboard'); })->name('odc-odp.index');
+        Route::any('odc-odp/{any}', function() { return redirect()->route('ftth.dashboard'); })->where('any', '.*');
         Route::post('pelanggan-import', [PelangganController::class, 'import'])->name('pelanggan.import');
-        Route::get('map-pelanggan', [PelangganController::class, 'map'])->name('pelanggan.map');
+        Route::get('map-pelanggan', function() { return redirect()->route('ftth.dashboard'); })->name('pelanggan.map');
         Route::post('pelanggan/{pelanggan}/toggle-status', [PelangganController::class, 'toggleStatus'])->name('pelanggan.toggle-status');
         Route::post('pelanggan/{pelanggan}/toggle-wa', [PelangganController::class, 'toggleWa'])->name('pelanggan.toggle-wa');
         Route::post('pelanggan/toggle-all-wa', [PelangganController::class, 'toggleAllWa'])->name('pelanggan.toggle-all-wa');
@@ -119,10 +120,10 @@ Route::middleware(['auth'])->group(function () {
 
     // Jaringan FTTH
     Route::middleware('can:pelanggan_manage')->group(function() {
-        Route::resource('kabel', \App\Http\Controllers\KabelController::class);
-        Route::post('kabel/{kabel}/status', [\App\Http\Controllers\KabelController::class, 'updateStatus'])->name('kabel.status');
-        Route::get('kabel-geojson', [\App\Http\Controllers\KabelController::class, 'geojson'])->name('kabel.geojson');
-        Route::resource('olt', \App\Http\Controllers\OltController::class);
+        Route::get('kabel', function() { return redirect()->route('ftth.dashboard'); })->name('kabel.index');
+        Route::any('kabel/{any}', function() { return redirect()->route('ftth.dashboard'); })->where('any', '.*');
+        Route::get('olt', function() { return redirect()->route('ftth.dashboard'); })->name('olt.index');
+        Route::any('olt/{any}', function() { return redirect()->route('ftth.dashboard'); })->where('any', '.*');
         Route::get('ftth/map', [\App\Http\Controllers\FtthMapController::class, 'index'])->name('ftth.map');
         Route::get('ftth', [\App\Http\Controllers\FtthMapController::class, 'dashboard'])->name('ftth.dashboard');
         // FTTH API — nodes existing

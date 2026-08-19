@@ -181,10 +181,16 @@ class FtthAdvancedController extends Controller
             $uptimeStr = "{$h}j {$m}m";
         }
 
+        $isOnline = ($pelanggan->last_online_status == 1 || $pelanggan->last_online_status === 'online');
+        if ($pelanggan->last_inform_at && \Carbon\Carbon::parse($pelanggan->last_inform_at)->diffInMinutes(now()) > 10) {
+            $isOnline = false;
+        }
+
         return response()->json([
+            'is_online'    => $isOnline,
             'ssid'         => $info['ssid'] ?? '-',
-            'rx_power'     => $info['rx_power'] ?? $pelanggan->onu_rx_power,
-            'uptime'       => $uptimeStr,
+            'rx_power'     => $isOnline ? ($info['rx_power'] ?? $pelanggan->onu_rx_power) : null,
+            'uptime'       => $isOnline ? $uptimeStr : '-',
             'last_inform'  => $info['last_inform'] ?? null,
             'nama'         => $pelanggan->nama_pelanggan,
             'ip_address'   => $pelanggan->ip_address,
@@ -515,12 +521,11 @@ class FtthAdvancedController extends Controller
      */
     public function ping(Request $request)
     {
-        $request->validate([
-            'ip'    => 'required|ip',
-            'count' => 'nullable|integer|min:1|max:10',
-        ]);
+        $ip = trim($request->input('ip') ?: $request->input('ip_address') ?: $request->input('target') ?: '');
+        if (!$ip) {
+            return response()->json(['success' => false, 'message' => 'IP address atau Hostname wajib diisi.'], 422);
+        }
 
-        $ip    = $request->ip;
         $count = min((int) ($request->count ?? 4), 10);
 
         // Jalankan ping (platform-aware)
@@ -533,7 +538,10 @@ class FtthAdvancedController extends Controller
         exec($cmd, $output, $retCode);
 
         $rawOutput  = implode("\n", $output);
-        $isReachable = $retCode === 0;
+        $isReachable = ($retCode === 0);
+        if (preg_match('/Request timed out|TTL expired|Unreachable|100% loss|Destination host/i', $rawOutput)) {
+            $isReachable = false;
+        }
 
         // Parse avg RTT
         $avgRtt = null;
@@ -543,16 +551,35 @@ class FtthAdvancedController extends Controller
             $avgRtt = (float) $m[1]; // Linux
         }
 
-        // Log ke database
-        \DB::table('ping_logs')->insert([
-            'ip_address'   => $ip,
-            'is_reachable' => $isReachable,
-            'avg_rtt_ms'   => $avgRtt,
-            'raw_output'   => $rawOutput,
-            'user_id'      => Auth::id(),
-            'created_at'   => now(),
-            'updated_at'   => now(),
-        ]);
+        // Auto update pelanggan status in database if matching IP
+        if (\Illuminate\Support\Facades\Schema::hasTable('pelanggan')) {
+            Pelanggan::where('ip_address', $ip)->update([
+                'last_online_status' => $isReachable ? 1 : 0,
+                'last_ping_at'       => now(),
+            ]);
+        }
+
+        // Auto update OLT status in database if matching IP
+        if (\Illuminate\Support\Facades\Schema::hasTable('olts')) {
+            Olt::where('ip_address', $ip)->update([
+                'status' => $isReachable ? 'online' : 'offline',
+            ]);
+        }
+
+        // Log ke database safely
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('ping_logs')) {
+                \DB::table('ping_logs')->insert([
+                    'ip_address'   => $ip,
+                    'is_reachable' => $isReachable,
+                    'avg_rtt_ms'   => $avgRtt,
+                    'raw_output'   => $rawOutput,
+                    'user_id'      => Auth::id(),
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+        } catch (\Exception $e) {}
 
         return response()->json([
             'success'     => true,
