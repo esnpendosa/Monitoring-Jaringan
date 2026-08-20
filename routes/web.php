@@ -375,10 +375,11 @@ Route::get('register-wifi', [\App\Http\Controllers\PublicRegistrationController:
 Route::post('register-wifi', [\App\Http\Controllers\PublicRegistrationController::class, 'register'])->name('public.register.store');
 Route::get('register-wifi/success', [\App\Http\Controllers\PublicRegistrationController::class, 'success'])->name('public.register.success');
 
-// Whatsapp Hook (Outside auth because it's called by the Node.js bot)
+// Whatsapp & Telegram Bot Hooks (Outside auth because they are called by bots/Telegram API)
 Route::post('whatsapp/webhook', [\App\Http\Controllers\WhatsappController::class, 'webhook']);
 Route::post('whatsapp/status', [\App\Http\Controllers\WhatsappController::class, 'status']);
 Route::post('whatsapp/train', [\App\Http\Controllers\WhatsappController::class, 'train']);
+Route::post('telegram/webhook', [\App\Http\Controllers\TelegramBotController::class, 'webhook']);
 
 // Midtrans Callback (Outside auth)
 Route::post('payment/callback', [\App\Http\Controllers\PaymentController::class, 'callback'])->name('payment.callback');

@@ -64,16 +64,41 @@ class MonitorPelanggan extends Command
                 $msg .= "--------------------------\n";
                 $msg .= "Mohon cek koneksi atau hubungi pelanggan.";
 
-                // Notify Admin (Disabled by request)
-                // $targetJid = str_contains($adminNum, '@') ? $adminNum : $adminNum . "@s.whatsapp.net";
-                // $waClient->sendMessage($targetJid, ['text' => $msg]);
-                
-                // JANGAN kirim notifikasi offline ke pelanggan agar tidak risih
-                /*
-                if ($p->no_wa) {
-                    $waClient->sendMessage($p->no_wa, ['text' => "Halo Kak " . $p->nama_pelanggan . ", sistem kami mendeteksi koneksi internet Anda terputus. Tim kami sedang mengecek kendala ini. Mohon tunggu sebentar nggih."]);
+                // Send Telegram Alert to Admin Group via TelegramService
+                try {
+                    $telegramService = new \App\Services\TelegramService();
+                    if ($telegramService->isEnabled()) {
+                        $tgMsg = "🔴 <b>WATCHDOG DETEKSI GANGGUAN OFFLINE</b>\n";
+                        $tgMsg .= "--------------------------------------\n";
+                        $tgMsg .= "Pelanggan: <b>" . htmlspecialchars($p->nama_pelanggan) . "</b> (" . $p->kode_pelanggan . ")\n";
+                        $tgMsg .= "Status   : 🔴 <b>OFFLINE / DISCONNECTED</b>\n";
+                        $tgMsg .= "Waktu    : " . now()->format('H:i:s d/m/Y') . "\n";
+                        $tgMsg .= "--------------------------------------\n";
+                        $tgMsg .= "<i>Sistem otomatis memantau koneksi & membuat tiket penanganan.</i>";
+                        $telegramService->sendAdminAlert($tgMsg);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Watchdog Telegram Alert Error: " . $e->getMessage());
                 }
-                */
+
+                // Auto-create Watchdog Ticket if no open ticket exists
+                try {
+                    $hasOpenTicket = \App\Models\TiketGangguan::where('id_pelanggan', $p->id_pelanggan)
+                        ->where('status', 'Open')
+                        ->exists();
+
+                    if (!$hasOpenTicket) {
+                        \App\Models\TiketGangguan::create([
+                            'kode_tiket'   => 'TKT-WATCHDOG-' . date('YmdHis') . '-' . $p->id_pelanggan,
+                            'id_pelanggan' => $p->id_pelanggan,
+                            'prioritas'    => 'Tinggi',
+                            'keluhan'      => 'Sistem Watchdog Otomatis: ONT Offline / Disconnected terdeteksi',
+                            'status'       => 'Open',
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Watchdog Ticket Auto-Create Error: " . $e->getMessage());
+                }
 
                 Log::info("Offline status detected for customer: " . $p->nama_pelanggan);
             } 
@@ -86,9 +111,19 @@ class MonitorPelanggan extends Command
                 $msg .= "IP Baru: " . $currentIp . "\n";
                 $msg .= "Waktu: " . now()->format('H:i:s d/m/Y');
 
-                // Notify Admin (Disabled by request)
-                // $targetJid = str_contains($adminNum, '@') ? $adminNum : $adminNum . "@s.whatsapp.net";
-                // $waClient->sendMessage($targetJid, ['text' => $msg]);
+                try {
+                    $telegramService = new \App\Services\TelegramService();
+                    if ($telegramService->isEnabled()) {
+                        $tgRecover = "🟢 <b>WATCHDOG KONEKSI PULIH</b>\n";
+                        $tgRecover .= "Pelanggan: <b>" . htmlspecialchars($p->nama_pelanggan) . "</b> (" . $p->kode_pelanggan . ")\n";
+                        $tgRecover .= "Status   : 🟢 <b>ONLINE</b>\n";
+                        $tgRecover .= "IP       : " . $currentIp . "\n";
+                        $tgRecover .= "Waktu    : " . now()->format('H:i:s d/m/Y');
+                        $telegramService->sendAdminAlert($tgRecover);
+                    }
+                } catch (\Exception $e) {
+                    Log::error("Watchdog Recovery Telegram Error: " . $e->getMessage());
+                }
             }
 
             // Update database

@@ -19,6 +19,9 @@ use App\Http\Controllers\Api\LaporanController as ApiLaporanController;
 |
 */
 
+// Telegram Bot Webhook Route (Public Endpoint)
+Route::post('telegram/webhook', [\App\Http\Controllers\TelegramBotController::class, 'webhook']);
+
 // Auth Routes (Public login, protected logout & me)
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);

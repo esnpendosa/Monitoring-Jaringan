@@ -738,16 +738,20 @@ class WhatsappController extends Controller
             Cache::put('last_check_' . $remoteJid, $customer->id_pelanggan, 3600);
             $bills = $customer->tagihan()->where('status', '!=', 'paid')->get();
             if ($bills->count() > 0) {
-                $info = "Halo " . $customer->nama_pelanggan . ",\n\n*Tagihan Anda:*\n";
+                $info = "Halo *" . $customer->nama_pelanggan . "*,\n\n📋 *Tagihan WiFi Anda:*\n";
                 $total = 0;
                 foreach ($bills as $bill) {
-                    $info .= "• " . $bill->bulan . " " . $bill->tahun . ": Rp " . number_format($bill->jumlah, 0, ',', '.') . "\n";
+                    $info .= "• Periode " . sprintf('%02d', $bill->bulan) . "/" . $bill->tahun . ": Rp " . number_format($bill->jumlah, 0, ',', '.') . "\n";
                     $total += $bill->jumlah;
                 }
-                $info .= "\n*Total: Rp " . number_format($total, 0, ',', '.') . "*\n\nKirim bukti bayar kesini ya!";
+                $paymentUrl = route('payment.by-id', ['kode_pelanggan' => $customer->kode_pelanggan]);
+                $info .= "\n*Total Tagihan: Rp " . number_format($total, 0, ',', '.') . "*\n\n";
+                $info .= "💳 *Link Pembayaran Otomatis (Tanpa Tutup WA):*\n";
+                $info .= $paymentUrl . "\n\n";
+                $info .= "Anda dapat membayar langsung via QRIS / Transfer / E-Wallet melalui link di atas tanpa perlu menutup aplikasi. Terima kasih! 🙏";
                 return str_replace('{cek_tagihan}', $info, $finalReply);
             }
-            return str_replace('{cek_tagihan}', "Lunas! Anda tidak memiliki tagihan aktif.", $finalReply);
+            return str_replace('{cek_tagihan}', "🟢 *LUNAS!* Halo " . $customer->nama_pelanggan . ", Anda tidak memiliki tunggakan tagihan aktif saat ini. Terima kasih! 🙏", $finalReply);
         }
 
         if ($customerCode) {

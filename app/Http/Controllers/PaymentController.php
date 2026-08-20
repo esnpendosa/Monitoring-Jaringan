@@ -159,8 +159,7 @@ class PaymentController extends Controller
             }
         }
 
-        // Kirim Notifikasi WA setelah response (non-blocking)
-        // Midtrans butuh response cepat, jangan block dengan pengiriman WA
+        // Kirim Notifikasi WA & Telegram setelah response (non-blocking)
         if ($pelanggan && $pelanggan->no_wa) {
             $tid = $tagihan->id_tagihan;
             app()->terminating(function () use ($tid) {
@@ -171,6 +170,27 @@ class PaymentController extends Controller
                     \Illuminate\Support\Facades\Log::error('Gagal kirim nota bayar Midtrans: ' . $e->getMessage());
                 }
             });
+        }
+
+        // Kirim Notifikasi Telegram Admin Alert
+        try {
+            $telegramService = new \App\Services\TelegramService();
+            if ($telegramService->isEnabled()) {
+                $pName = $pelanggan ? $pelanggan->nama_pelanggan : 'Pelanggan';
+                $pCode = $pelanggan ? $pelanggan->kode_pelanggan : '-';
+                $alertMsg = "🟢 <b>PEMBAYARAN OTOMATIS BERHASIL (LUNAS)</b>\n";
+                $alertMsg .= "--------------------------------------\n";
+                $alertMsg .= "Pelanggan : <b>{$pName}</b> ({$pCode})\n";
+                $alertMsg .= "Tagihan ID: #{$tagihan->id_tagihan}\n";
+                $alertMsg .= "Jumlah    : <b>Rp " . number_format($tagihan->jumlah, 0, ',', '.') . "</b>\n";
+                $alertMsg .= "Metode    : {$paymentType}\n";
+                $alertMsg .= "Waktu     : " . now()->format('H:i:s d/m/Y') . "\n";
+                $alertMsg .= "--------------------------------------\n";
+                $alertMsg .= "<i>Status Mikrotik & ONT otomatis di-unisolated / diaktifkan kembali!</i>";
+                $telegramService->sendAdminAlert($alertMsg);
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Gagal kirim notif Telegram lunas: " . $e->getMessage());
         }
     }
 }

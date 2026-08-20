@@ -1,0 +1,343 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Pelanggan;
+use App\Models\Tagihan;
+use App\Models\TiketGangguan;
+use App\Models\BotResponse;
+use App\Services\TelegramService;
+use App\Services\WhatsappClient;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+
+class TelegramBotController extends Controller
+{
+    protected TelegramService $telegramService;
+
+    public function __construct(TelegramService $telegramService)
+    {
+        $this->telegramService = $telegramService;
+    }
+
+    /**
+     * Telegram Webhook Handler
+     * POST /api/telegram/webhook
+     */
+    public function webhook(Request $request)
+    {
+        $update = $request->all();
+        Log::info('Telegram Webhook Payload: ', $update);
+
+        $message = $update['message'] ?? $update['edited_message'] ?? null;
+        if (!$message || !isset($message['chat']['id'])) {
+            return response()->json(['status' => 'ignored_no_message']);
+        }
+
+        $chatId    = $message['chat']['id'];
+        $text      = trim($message['text'] ?? '');
+        $firstName = $message['from']['first_name'] ?? 'Pelanggan';
+        $username  = $message['from']['username'] ?? '';
+        $lowerText = strtolower($text);
+
+        if (empty($text)) {
+            return response()->json(['status' => 'empty_text']);
+        }
+
+        // 1. Command /start, /menu, /help
+        if ($lowerText === '/start' || $lowerText === '/menu' || $lowerText === '/help' || $lowerText === 'menu') {
+            return $this->sendMenu($chatId, $firstName);
+        }
+
+        // 2. Command /bayar, tagihan, bayar
+        if (str_starts_with($lowerText, '/bayar') || str_starts_with($lowerText, 'bayar') || str_starts_with($lowerText, 'tagihan') || str_starts_with($lowerText, 'cek tagihan')) {
+            return $this->handleBayarCommand($chatId, $text, $firstName);
+        }
+
+        // 3. Command /tiket, lapor, trouble, gangguan
+        if (str_starts_with($lowerText, '/tiket') || str_starts_with($lowerText, 'lapor') || str_starts_with($lowerText, 'trouble') || str_starts_with($lowerText, 'gangguan')) {
+            return $this->handleTiketCommand($chatId, $text, $firstName);
+        }
+
+        // 4. Command /status, status, cek status
+        if (str_starts_with($lowerText, '/status') || str_starts_with($lowerText, 'status') || str_starts_with($lowerText, 'cek status')) {
+            return $this->handleStatusCommand($chatId, $text, $firstName);
+        }
+
+        // 5. Check Keyword Response in Database
+        $botResponse = $this->findKeywordResponse($text);
+        if ($botResponse) {
+            $reply = str_replace(
+                ['{Nama Customer}', '{Nama}', '{PushName}'],
+                [$firstName, $firstName, $firstName],
+                $botResponse->response
+            );
+            $this->telegramService->sendMessage($chatId, $this->formatForTelegram($reply));
+            return response()->json(['status' => 'matched_keyword']);
+        }
+
+        // 6. AI Fallback Response
+        $aiReply = $this->getAiResponse($text, $firstName);
+        if ($aiReply) {
+            $this->telegramService->sendMessage($chatId, $aiReply);
+            return response()->json(['status' => 'ai_reply']);
+        }
+
+        // Fallback default
+        $defaultMsg = "🤖 <b>ROZITECH TELEGRAM BOT</b>\n\nKetik <b>/menu</b> atau <b>menu</b> untuk melihat daftar opsi bantuan otomatis.";
+        $this->telegramService->sendMessage($chatId, $defaultMsg);
+        return response()->json(['status' => 'default_reply']);
+    }
+
+    /**
+     * Render Menu Utama
+     */
+    protected function sendMenu($chatId, $firstName)
+    {
+        $msg = "<b>🤖 SELAMAT DATANG DI ROZITECH BOT AUTOMATION</b>\n";
+        $msg .= "Halo Kak <b>" . htmlspecialchars($firstName) . "</b>! 👋\n\n";
+        $msg .= "Silakan pilih layanan otomatis yang Anda butuhkan:\n\n";
+        $msg .= "💳 <b>PULUS & PEMBAYARAN</b>\n";
+        $msg .= "• Ketik <code>/bayar</code> atau <code>TAGIHAN</code> → Cek rincian tagihan & Pembayaran Otomatis via QRIS/VA\n\n";
+        $msg .= "🎫 <b>TICKETING & GANGGUAN</b>\n";
+        $msg .= "• Ketik <code>/tiket [keluhan]</code> atau <code>LAPOR [keluhan]</code> → Buat tiket penanganan teknisi otomatis\n\n";
+        $msg .= "📡 <b>MONITORING KONEKSI</b>\n";
+        $msg .= "• Ketik <code>/status</code> → Cek status ONT, redaman sinyal RX (dBm), & paket aktif\n\n";
+        $msg .= "💬 <b>CUSTOMER SERVICE</b>\n";
+        $msg .= "• Ketik <code>CS</code> untuk terhubung langsung dengan Tim Support Rozitech.";
+
+        $this->telegramService->sendMessage($chatId, $msg);
+        return response()->json(['status' => 'menu_sent']);
+    }
+
+    /**
+     * Handle Bayar Command
+     */
+    protected function handleBayarCommand($chatId, $text, $firstName)
+    {
+        // Ekstrak kode jika ada (contoh: /bayar AD20)
+        $parts = explode(' ', trim($text));
+        $code  = count($parts) > 1 ? strtoupper($parts[1]) : null;
+
+        $pelanggan = null;
+        if ($code) {
+            $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
+                ->orWhereRaw('UPPER(mikrotik_username) = ?', [$code])
+                ->first();
+        }
+
+        if (!$pelanggan) {
+            $msg = "💳 <b>CEK TAGIHAN & PEMBAYARAN OTOMATIS</b>\n\n";
+            $msg .= "Silakan ketik <code>/bayar [KODE_PELANGGAN]</code>\n";
+            $msg .= "Contoh: <code>/bayar KTR01</code>\n\n";
+            $msg .= "<i>Anda dapat melihat Kode Pelanggan pada stiker router ONT Anda.</i>";
+            $this->telegramService->sendMessage($chatId, $msg);
+            return response()->json(['status' => 'prompt_code']);
+        }
+
+        $tagihanUnpaid = Tagihan::where('id_pelanggan', $pelanggan->id_pelanggan)
+            ->where('status', '!=', 'paid')
+            ->get();
+
+        if ($tagihanUnpaid->isEmpty()) {
+            $msg = "✅ <b>STATUS TAGIHAN LUNAS</b>\n\n";
+            $msg .= "Pelanggan: <b>" . htmlspecialchars($pelanggan->nama_pelanggan) . "</b> (" . $pelanggan->kode_pelanggan . ")\n";
+            $msg .= "Status: 🟢 <b>LUNAS (Tidak ada tunggakan)</b>\n\n";
+            $msg .= "Terima kasih telah menggunakan layanan Rozitech Network! 🙏";
+            $this->telegramService->sendMessage($chatId, $msg);
+            return response()->json(['status' => 'paid']);
+        }
+
+        $total = 0;
+        $info  = "💳 <b>RINCIAN TAGIHAN UNPAID</b>\n";
+        $info .= "--------------------------------------\n";
+        $info .= "Pelanggan: <b>" . htmlspecialchars($pelanggan->nama_pelanggan) . "</b> (" . $pelanggan->kode_pelanggan . ")\n";
+        $info .= "Paket: <b>" . htmlspecialchars($pelanggan->paket ?? 'Paket WiFi') . "</b>\n";
+        $info .= "--------------------------------------\n";
+
+        foreach ($tagihanUnpaid as $t) {
+            $info .= "• Periode " . sprintf('%02d', $t->bulan) . "/" . $t->tahun . ": <b>Rp " . number_format($t->jumlah, 0, ',', '.') . "</b>\n";
+            $total += $t->jumlah;
+        }
+
+        $paymentUrl = route('payment.by-id', ['kode_pelanggan' => $pelanggan->kode_pelanggan]);
+
+        $info .= "--------------------------------------\n";
+        $info .= "<b>TOTAL TAGIHAN: Rp " . number_format($total, 0, ',', '.') . "</b>\n\n";
+        $info .= "🔗 <b>LINK PEMBAYARAN OTOMATIS:</b>\n";
+        $info .= "<a href=\"{$paymentUrl}\">👉 Klik Di Sini Untuk Bayar (QRIS/Transfer/E-Wallet)</a>\n\n";
+        $info .= "<i>Setelah pembayaran selesai di link di atas, koneksi internet Anda akan otomatis aktif kembali secara instan tanpa perlu kirim bukti bayar!</i>";
+
+        $this->telegramService->sendMessage($chatId, $info);
+        return response()->json(['status' => 'bill_sent']);
+    }
+
+    /**
+     * Handle Tiket / Trouble Command
+     */
+    protected function handleTiketCommand($chatId, $text, $firstName)
+    {
+        $cleanText = preg_replace('/^(\/tiket|lapor|trouble|gangguan)\s*/i', '', $text);
+
+        if (empty($cleanText)) {
+            $msg = "🎫 <b>BUAT TIKET GANGGUAN OTOMATIS</b>\n\n";
+            $msg .= "Silakan ketik: <code>/tiket [KODE_PELANGGAN] [KELUHAN]</code>\n";
+            $msg .= "Contoh: <code>/tiket KTR01 Lampu LOS merah koneksi mati</code>";
+            $this->telegramService->sendMessage($chatId, $msg);
+            return response()->json(['status' => 'prompt_ticket']);
+        }
+
+        // Ekstrak kode jika ada di kata pertama
+        $words = explode(' ', $cleanText);
+        $code  = strtoupper($words[0]);
+        $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
+            ->orWhereRaw('UPPER(mikrotik_username) = ?', [$code])
+            ->first();
+
+        $keluhan = $cleanText;
+        $idPelanggan = null;
+
+        if ($pelanggan) {
+            $idPelanggan = $pelanggan->id_pelanggan;
+            array_shift($words);
+            $keluhan = implode(' ', $words);
+            if (empty($keluhan)) $keluhan = "Laporan gangguan koneksi internet";
+        } else {
+            // Pelanggan umum/default
+            $pelanggan = Pelanggan::first();
+            $idPelanggan = $pelanggan?->id_pelanggan ?? 1;
+        }
+
+        $kodeTiket = 'TKT-' . date('YmdHis');
+        $tiket = TiketGangguan::create([
+            'kode_tiket'   => $kodeTiket,
+            'id_pelanggan' => $idPelanggan,
+            'prioritas'    => 'Sedang',
+            'keluhan'      => $keluhan,
+            'status'       => 'Open',
+        ]);
+
+        $reply = "🎫 <b>TIKET GANGGUAN BERHASIL DIBUAT!</b>\n";
+        $reply .= "--------------------------------------\n";
+        $reply .= "No Tiket  : <code>{$kodeTiket}</code>\n";
+        $reply .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan ?? $firstName) . "</b>\n";
+        $reply .= "Keluhan   : <i>" . htmlspecialchars($keluhan) . "</i>\n";
+        $reply .= "Status    : 🟡 <b>OPEN (Dalam Antrean Teknisi)</b>\n";
+        $reply .= "--------------------------------------\n";
+        $reply .= "Notifikasi laporan ini telah otomatis diteruskan ke Tim Teknisi & Manajer Support. Petugas kami akan segera menghubungi Anda. Terima kasih!";
+
+        $this->telegramService->sendMessage($chatId, $reply);
+
+        // Forward alert ke Telegram Admin Group
+        $adminAlert = "⚠️ <b>TIKET GANGGUAN BARU (#{$kodeTiket})</b>\n";
+        $adminAlert .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan ?? $firstName) . "</b>\n";
+        $adminAlert .= "No WA     : " . ($pelanggan->no_wa ?? '-') . "\n";
+        $adminAlert .= "Keluhan   : " . htmlspecialchars($keluhan) . "\n";
+        $adminAlert .= "Waktu     : " . now()->format('H:i:s d/m/Y');
+        $this->telegramService->sendAdminAlert($adminAlert);
+
+        return response()->json(['status' => 'ticket_created']);
+    }
+
+    /**
+     * Handle Status Command
+     */
+    protected function handleStatusCommand($chatId, $text, $firstName)
+    {
+        $parts = explode(' ', trim($text));
+        $code  = count($parts) > 1 ? strtoupper($parts[1]) : null;
+
+        $pelanggan = null;
+        if ($code) {
+            $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
+                ->orWhereRaw('UPPER(mikrotik_username) = ?', [$code])
+                ->first();
+        }
+
+        if (!$pelanggan) {
+            $msg = "📡 <b>MONITORING STATUS KONEKSI ONT</b>\n\n";
+            $msg .= "Silakan ketik: <code>/status [KODE_PELANGGAN]</code>\n";
+            $msg .= "Contoh: <code>/status KTR01</code>";
+            $this->telegramService->sendMessage($chatId, $msg);
+            return response()->json(['status' => 'prompt_status']);
+        }
+
+        $rx = $pelanggan->onu_rx_power ? number_format($pelanggan->onu_rx_power, 2) . " dBm" : "N/A";
+        $statusOnt = $pelanggan->is_online ? "🟢 <b>ONLINE</b>" : "🔴 <b>OFFLINE / LOS</b>";
+
+        $msg = "📡 <b>STATUS MONITORING KONEKSI PELANGGAN</b>\n";
+        $msg .= "--------------------------------------\n";
+        $msg .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan) . "</b> (" . $pelanggan->kode_pelanggan . ")\n";
+        $msg .= "Status ONT: {$statusOnt}\n";
+        $msg .= "Redaman RX: <b>{$rx}</b>\n";
+        $msg .= "Paket     : " . htmlspecialchars($pelanggan->paket ?? 'Internet') . "\n";
+        $msg .= "Terisolir : " . ($pelanggan->is_isolated ? "🔴 YA (Tunggakan Bayar)" : "🟢 TIDAK (Normal)") . "\n";
+        $msg .= "Terakhir Inform: " . ($pelanggan->last_inform_at ? $pelanggan->last_inform_at : '-') . "\n";
+        $msg .= "--------------------------------------";
+
+        $this->telegramService->sendMessage($chatId, $msg);
+        return response()->json(['status' => 'status_sent']);
+    }
+
+    /**
+     * Find keyword response from DB
+     */
+    protected function findKeywordResponse($message)
+    {
+        $lowerMsg = strtolower(trim($message));
+        $responses = BotResponse::where('is_active', true)->get();
+
+        foreach ($responses as $bot) {
+            $keywords = array_filter(array_map('trim', explode(',', strtolower($bot->keyword))));
+            foreach ($keywords as $kw) {
+                if ($lowerMsg === $kw) return $bot;
+                if (!$bot->is_exact_match && strlen($kw) >= 3 && str_contains($lowerMsg, $kw)) return $bot;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get AI Response fallback
+     */
+    protected function getAiResponse($prompt, $userName)
+    {
+        $apiKey = env('GEMINI_API_KEY') ?: env('OPENAI_API_KEY');
+        if (empty($apiKey)) return null;
+
+        try {
+            if (env('GEMINI_API_KEY')) {
+                $response = Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={$apiKey}", [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => "Kamu adalah AI Customer Support Rozitech NMS (ISP & FTTH). Jawab dengan sopan, ringkas, & ramah kepada pelanggan bernama {$userName}. Pertanyaan: {$prompt}"]
+                            ]
+                        ]
+                    ]
+                ]);
+
+                if ($response->successful()) {
+                    $json = $response->json();
+                    return $json['candidates'][0]['content']['parts'][0]['text'] ?? null;
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Telegram AI Error: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    /**
+     * Format text for Telegram HTML
+     */
+    protected function formatForTelegram($text)
+    {
+        // Simple formatter from markdown bold *bold* to <b>bold</b>
+        $formatted = preg_replace('/\*(.*?)\*/s', '<b>$1</b>', $text);
+        return $formatted;
+    }
+}
