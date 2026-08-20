@@ -487,6 +487,13 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 }
 .cable-dist-pill::before{display:none!important;}
 
+/* Level-Of-Detail (LOD): Sembunyikan label teks & pil di zoom out (<16) agar peta 100% cepat & tidak menumpuk pita putih/hitam */
+#ftth-map:not(.zoom-high) .node-label-pill,
+#ftth-map:not(.zoom-high) .leaflet-tooltip.cl,
+#ftth-map:not(.zoom-high) .cable-dist-pill {
+  display: none !important;
+}
+
 /* SLEEK MARKER CLUSTER */
 .lmc{
   width:32px!important;height:32px!important;
@@ -1423,14 +1430,23 @@ var isPanning = false;
 function checkZoomVisibility() {
   if (!MAP) return;
   var z = MAP.getZoom();
+  var container = document.getElementById('ftth-map');
 
-  if (z < 14) {
+  if (container) {
+    if (z >= 16) {
+      container.classList.add('zoom-high');
+    } else {
+      container.classList.remove('zoom-high');
+    }
+  }
+
+  if (z < 15) {
     if (MAP.hasLayer(L_LABEL)) MAP.removeLayer(L_LABEL);
   } else {
     if (showLabels && !MAP.hasLayer(L_LABEL)) MAP.addLayer(L_LABEL);
   }
 
-  if (z < 12) {
+  if (z < 15) {
     if (MAP.hasLayer(L_ITEM)) MAP.removeLayer(L_ITEM);
     if (MAP.hasLayer(L_ODP)) MAP.removeLayer(L_ODP);
   } else {
