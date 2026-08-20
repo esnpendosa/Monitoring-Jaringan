@@ -24,29 +24,15 @@
 <!-- Status Banner -->
 <div class="card mb-4 border-0 shadow-sm">
     <div class="card-body">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-3">
-                <div class="avatar avatar-md flex-shrink-0">
-                    <span class="avatar-initial rounded bg-label-info">
-                        <i class="bx bxl-telegram fs-3"></i>
-                    </span>
-                </div>
-                <div>
-                    <h5 class="mb-1 text-dark fw-bold">Pengaturan Bot Telegram Dinamis & Watchdog</h5>
-                    <p class="text-muted mb-0 small">Menghubungkan sistem Rozitech NMS ke Bot Telegram secara dinamis untuk notifikasi otomatis, pembayaran 1-click, & ticketing.</p>
-                </div>
+        <div class="d-flex align-items-center gap-3">
+            <div class="avatar avatar-md flex-shrink-0">
+                <span class="avatar-initial rounded bg-label-info">
+                    <i class="bx bxl-telegram fs-3"></i>
+                </span>
             </div>
-
             <div>
-                @if($setting && $setting->enabled && !empty($setting->bot_token))
-                    <span class="badge bg-success px-3 py-2 fs-6">
-                        <i class="bx bx-check-circle me-1"></i> Status Bot: CONNECTED (ONLINE)
-                    </span>
-                @else
-                    <span class="badge bg-danger px-3 py-2 fs-6">
-                        <i class="bx bx-x-circle me-1"></i> Status Bot: DISCONNECTED (OFFLINE)
-                    </span>
-                @endif
+                <h5 class="mb-1 text-dark fw-bold">Pengaturan Bot Telegram Dinamis & Watchdog</h5>
+                <p class="text-muted mb-0 small">Cukup masukkan Bot Token & Admin Group/Chat ID untuk notifikasi otomatis, pembayaran 1-click, & ticketing.</p>
             </div>
         </div>
     </div>
