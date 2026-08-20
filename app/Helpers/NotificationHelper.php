@@ -57,6 +57,22 @@ class NotificationHelper
     }
 
     /**
+     * Kirim notifikasi ke SEMUA user di sistem.
+     */
+    public static function sendToAll(string $type, string $title, string $body, array $options = []): void
+    {
+        try {
+            $users = User::all();
+            foreach ($users as $u) {
+                self::send($u->id, $type, $title, $body, $options);
+            }
+            self::broadcast($type, $title, $body, $options);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('sendToAll error: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Shorthand: notifikasi tiket baru untuk admin
      */
     public static function newTicket(int $adminUserId, string $kode, string $pelangganName, string $keluhan): void

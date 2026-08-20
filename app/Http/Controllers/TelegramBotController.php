@@ -295,7 +295,7 @@ class TelegramBotController extends Controller
         // Push In-App Notification to Web Navbar Dropdown
         $pelangganName = $pelanggan->nama_pelanggan ?? $firstName;
         try {
-            \App\Helpers\NotificationHelper::broadcast(
+            \App\Helpers\NotificationHelper::sendToAll(
                 'tiket_baru',
                 '🎫 Tiket Gangguan Baru (Telegram)',
                 "Tiket #{$kodeTiket} dari {$pelangganName}: {$keluhan}",
