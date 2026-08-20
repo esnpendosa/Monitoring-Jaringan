@@ -2945,6 +2945,7 @@ async function savePos(type, id, latlng) {
     showToast('Posisi berhasil diperbarui!', 'ok');
   } catch (e) {
     console.warn('Update pos warning:', e);
+    showToast('Gagal update posisi: ' + (e.message || e), 'er');
   }
 }
 
@@ -3884,12 +3885,18 @@ async function api(method, url, body) {
 // ──────────────── TOAST ────────────────────────────────────────────────
 var toastT;
 function showToast(msg, type='ok') {
-  var el=document.getElementById('toast');
+  var el = document.getElementById('toast');
   if (!el) return;
   var icon = type==='ok' ? '<i class="bx bx-check-circle"></i>' : '<i class="bx bx-error-circle"></i>';
-  el.innerHTML = `${icon} ${msg}`;
+  el.innerHTML = `${icon} <span style="flex:1;">${msg}</span> <i class="bx bx-x" onclick="document.getElementById('toast').classList.remove('show');event.stopPropagation();" style="cursor:pointer;font-size:16px;opacity:0.6;margin-left:8px;" title="Tutup"></i>`;
   el.className = 'show ' + (type==='ok'?'ok':'er');
-  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),3000);
+  el.style.pointerEvents = 'auto';
+  el.onclick = function() { el.classList.remove('show'); };
+  
+  clearTimeout(toastT);
+  toastT = setTimeout(() => {
+    el.classList.remove('show');
+  }, 2500);
 }
 
 // ──────────────── MODAL FULLSCREEN HELPER ─────────────────────────────
