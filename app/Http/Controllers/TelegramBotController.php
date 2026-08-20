@@ -132,8 +132,8 @@ class TelegramBotController extends Controller
             return $this->handleBayarCommand($chatId, $text, $firstName);
         }
 
-        // 4. Command /tiket, lapor, trouble, gangguan
-        if (str_starts_with($lowerText, '/tiket') || str_starts_with($lowerText, 'lapor') || str_starts_with($lowerText, 'trouble') || str_starts_with($lowerText, 'gangguan')) {
+        // 4. Command /tiket, tiket, lapor, trouble, gangguan, komplain
+        if (str_starts_with($lowerText, '/tiket') || str_starts_with($lowerText, 'tiket') || str_starts_with($lowerText, 'lapor') || str_starts_with($lowerText, 'trouble') || str_starts_with($lowerText, 'gangguan') || str_starts_with($lowerText, 'komplain')) {
             return $this->handleTiketCommand($chatId, $text, $firstName);
         }
 
@@ -277,17 +277,11 @@ class TelegramBotController extends Controller
      */
     protected function handleTiketCommand($chatId, $text, $firstName)
     {
-        $cleanText = preg_replace('/^(\/tiket|lapor|trouble|gangguan)\s*/i', '', $text);
-        $words = explode(' ', trim($cleanText));
-        $code  = count($words) > 0 ? $words[0] : null;
-
-        $pelanggan = $this->findCustomer($code);
-        $keluhan   = $cleanText ?: 'Laporan gangguan koneksi internet';
-
-        if ($pelanggan && count($words) > 1) {
-            array_shift($words);
-            $keluhan = implode(' ', $words);
-        }
+        $cleanText = preg_replace('/^(\/tiket|tiket|lapor|trouble|gangguan|komplain)\s*/i', '', $text);
+        $cleanText = trim(str_replace(['[', ']'], '', $cleanText));
+        
+        $pelanggan = $this->findCustomer(null);
+        $keluhan   = !empty($cleanText) ? $cleanText : 'Laporan gangguan koneksi internet';
 
         $kodeTiket = 'TKT-' . date('YmdHis');
         $tiket = TiketGangguan::create([
