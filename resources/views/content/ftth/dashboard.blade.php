@@ -1440,7 +1440,8 @@ function checkZoomVisibility() {
     }
   }
 
-  if (z < 15) {
+  // Tampilkan label teks HANYA bila zoom >= 16 agar tidak menumpuk di zoom 14
+  if (z < 16) {
     if (MAP.hasLayer(L_LABEL)) MAP.removeLayer(L_LABEL);
   } else {
     if (showLabels && !MAP.hasLayer(L_LABEL)) MAP.addLayer(L_LABEL);
@@ -1472,9 +1473,9 @@ function initMap() {
       wheelPxPerZoomLevel: 120
     });
 
-    satTile   = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:20,maxNativeZoom:19,updateWhenZooming:false,updateWhenIdle:true,keepBuffer:6});
-    darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d'],updateWhenZooming:false,updateWhenIdle:true,keepBuffer:6});
-    osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c'],updateWhenZooming:false,updateWhenIdle:true,keepBuffer:6});
+    satTile   = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['0','1','2','3'],maxZoom:20,maxNativeZoom:19});
+    darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d']});
+    osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c']});
 
     currentTile = satTile; // Default to Google Earth Satellite tile!
     satTile.addTo(MAP);
@@ -1505,12 +1506,13 @@ function initMap() {
     makeLegendDraggable();
 
     setTimeout(() => {
+      if (MAP) MAP.invalidateSize();
       var loader = document.getElementById('app-loader');
       if (loader) {
         loader.style.opacity = '0';
         setTimeout(() => loader.style.display = 'none', 250);
       }
-    }, 800);
+    }, 500);
   } catch(e) {
     console.error('Init map error:', e);
     var loader = document.getElementById('app-loader');
