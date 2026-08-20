@@ -330,10 +330,13 @@ class PelangganController extends Controller
 
             $mikrotikData = $mikrotik->getUserDetails($pelanggan->router, $username, $pelanggan->mikrotik_type, $pelanggan);
             
-            // Update last online status in DB for GIS map consistency
-            $isOnline = isset($mikrotikData['active']) ? 1 : 0;
-            if ($pelanggan->last_online_status != $isOnline) {
-                $pelanggan->update(['last_online_status' => $isOnline]);
+            // Update real-time online status in DB for GIS map & connection page consistency
+            $isOnline = (isset($mikrotikData['active']) && !empty($mikrotikData['active']) && ($mikrotikData['active']['uptime'] ?? 'Offline') !== 'Offline') ? 1 : 0;
+            if ($pelanggan->last_online_status != $isOnline || $pelanggan->is_online != $isOnline) {
+                $pelanggan->update([
+                    'last_online_status' => $isOnline,
+                    'is_online'          => $isOnline
+                ]);
             }
         }
 

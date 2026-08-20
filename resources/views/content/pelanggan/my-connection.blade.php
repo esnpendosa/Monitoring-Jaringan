@@ -165,6 +165,15 @@
         elseif ($price <= 200000) $maxSpeed = 50;
         else $maxSpeed = 100;
     }
+    // Real-time Device Online Check
+    $deviceOnline = false;
+    if (!$pelanggan->is_active || $pelanggan->is_isolated) {
+        $deviceOnline = false;
+    } elseif (isset($mikrotikData['active']) && !empty($mikrotikData['active']) && ($mikrotikData['active']['uptime'] ?? 'Offline') !== 'Offline') {
+        $deviceOnline = true;
+    } elseif ($pelanggan->is_online && $pelanggan->last_online_status) {
+        $deviceOnline = true;
+    }
 @endphp
 
 <div class="row">
@@ -192,10 +201,19 @@
                     </div>
                     @endif
                     <div class="d-flex align-items-center">
-                        <span class="badge {{ $pelanggan->is_active ? 'bg-success' : 'bg-danger' }} p-2 px-3 shadow-sm">
-                            <i class="bx {{ $pelanggan->is_active ? 'bx-wifi' : 'bx-wifi-off' }} me-1"></i>
-                            {{ $pelanggan->is_active ? 'TERHUBUNG' : 'ISOLIR' }}
+                        @if($pelanggan->is_isolated || !$pelanggan->is_active)
+                        <span class="badge bg-danger p-2 px-3 shadow-sm">
+                            <i class="bx bx-lock-alt me-1"></i> TERISOLIR
                         </span>
+                        @elseif($deviceOnline)
+                        <span class="badge bg-success p-2 px-3 shadow-sm">
+                            <i class="bx bx-wifi me-1"></i> TERHUBUNG
+                        </span>
+                        @else
+                        <span class="badge bg-secondary p-2 px-3 shadow-sm">
+                            <i class="bx bx-wifi-off me-1"></i> TERPUTUS (OFFLINE)
+                        </span>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -220,11 +238,11 @@
 
                 <div class="mb-3 d-flex justify-content-between">
                     <span class="text-muted">Lama Aktif (Uptime)</span>
-                    <span class="fw-bold text-success">
-                        @if($mikrotikData && isset($mikrotikData['active']['uptime']) && $mikrotikData['active']['uptime'] !== 'Offline' && $mikrotikData['active']['uptime'] !== 'Disconnected')
+                    <span class="fw-bold {{ $deviceOnline ? 'text-success' : 'text-danger' }}">
+                        @if($deviceOnline && isset($mikrotikData['active']['uptime']))
                             {{ $mikrotikData['active']['uptime'] }}
                         @else
-                            {{ $pelanggan->is_active ? 'Connected' : 'Offline' }}
+                            {{ $deviceOnline ? 'Connected' : 'Offline / Terputus' }}
                         @endif
                     </span>
                 </div>
@@ -381,6 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const maxSpeed = {{ $maxSpeed }};
     const customerId = {{ $pelanggan->id_pelanggan }};
     const mikrotikType = "{{ $pelanggan->mikrotik_type }}";
+    const isDeviceOnline = {{ $deviceOnline ? 'true' : 'false' }};
 
     // UI elements
     const btnModeLive = document.getElementById('btn-mode-live');
@@ -417,6 +436,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- Mode 1: Live Bandwidth Monitoring ---
     function fetchLiveTraffic() {
         if (currentMode !== 'live' || testInProgress) return;
+
+        if (!isDeviceOnline) {
+            updateGauge(0);
+            dlTextEl.innerText = '0.0 Mbps';
+            ulTextEl.innerText = '0.0 Mbps';
+            pingTextEl.innerText = 'N/A';
+            dlProgress.style.width = '0%';
+            ulProgress.style.width = '0%';
+            speedIndicatorText.className = "badge bg-label-danger mt-1 px-2 py-1";
+            speedIndicatorText.innerHTML = '<i class="bx bx-wifi-off me-1"></i> DISCONNECTED (OFFLINE)';
+            return;
+        }
 
         fetch(`/pelanggan/${customerId}/traffic`)
             .then(response => response.json())
