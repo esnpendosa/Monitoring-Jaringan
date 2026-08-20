@@ -130,6 +130,16 @@
 </head>
 <body>
 
+@if(auth()->check())
+<div class="position-fixed top-0 start-0 end-0 bg-dark text-white py-2 px-3 d-flex justify-content-between align-items-center z-3 shadow">
+  <small class="text-white"><i class="bx bx-show me-1 text-warning"></i> Mode Pratinjau Form Publik Customer (URL: <code>{{ route('public.register') }}</code>)</small>
+  <a href="{{ route('pelanggan.registrasi.index') }}" class="btn btn-xs btn-primary rounded-pill">
+    <i class="bx bx-left-arrow-alt me-1"></i> Kembali ke Dashboard Admin
+  </a>
+</div>
+<div style="height: 45px;"></div>
+@endif
+
   <div class="container d-flex justify-content-center">
     <div class="register-card">
       <div class="gradient-header">

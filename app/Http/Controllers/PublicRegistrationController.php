@@ -93,10 +93,6 @@ class PublicRegistrationController extends Controller
             Log::error("Failed to fetch profiles from Mikrotik: " . $e->getMessage());
         }
 
-        if (auth()->check() && auth()->user()->hasPermission('pelanggan_manage')) {
-            return redirect()->route('pelanggan.registrasi.index');
-        }
-
         return view('content.public.register', compact('packages'));
     }
 
