@@ -442,13 +442,19 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 /* Toast */
 #toast{
   position:fixed;bottom:56px;left:50%;transform:translateX(-50%) translateY(60px);
-  z-index:9999;background:#ffffff;border:1px solid var(--bd);color:var(--text);
+  z-index:99999;background:#ffffff;border:1px solid var(--bd);color:var(--text);
   padding:8px 16px;border-radius:8px;font-size:12px;font-weight:500;
-  box-shadow:0 10px 30px rgba(0,0,0,.15);
-  transition:transform .3s cubic-bezier(.175,.885,.32,1.275);pointer-events:none;
-  display:flex;align-items:center;gap:6px;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  transition:all .2s ease-in-out;pointer-events:none;
+  display:none;align-items:center;gap:6px;opacity:0;visibility:hidden;
 }
-#toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto!important;}
+#toast.show{
+  transform:translateX(-50%) translateY(0);
+  pointer-events:auto!important;
+  display:flex!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
 #toast.ok{border-color:rgba(22,163,74,.4);color:var(--green);}
 #toast.er{border-color:rgba(220,38,38,.4);color:var(--red);}
 
@@ -3886,19 +3892,30 @@ async function api(method, url, body) {
 var toastT;
 function hideToast() {
   var el = document.getElementById('toast');
-  if (el) el.classList.remove('show');
+  if (el) {
+    el.classList.remove('show');
+    el.style.display = 'none';
+    el.style.opacity = '0';
+    el.style.visibility = 'hidden';
+  }
 }
 
 function showToast(msg, type='ok') {
   var el = document.getElementById('toast');
   if (!el) return;
   var icon = type==='ok' ? '<i class="bx bx-check-circle"></i>' : '<i class="bx bx-error-circle"></i>';
-  el.innerHTML = `${icon} <span style="flex:1;">${msg}</span> <button onclick="hideToast()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px;padding:0 4px;margin-left:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;opacity:0.75;" title="Tutup Notifikasi"><i class="bx bx-x"></i></button>`;
+  
+  el.style.display = 'flex';
+  el.style.opacity = '1';
+  el.style.visibility = 'visible';
+  el.style.pointerEvents = 'auto';
+  
+  el.innerHTML = `${icon} <span style="flex:1;">${msg}</span> <button type="button" onclick="hideToast(); event.stopPropagation();" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px;padding:2px 6px;margin-left:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;opacity:0.85;border-radius:4px;" title="Tutup Notifikasi"><i class="bx bx-x"></i></button>`;
   el.className = 'show ' + (type==='ok'?'ok':'er');
   
   clearTimeout(toastT);
   toastT = setTimeout(() => {
-    el.classList.remove('show');
+    hideToast();
   }, 2500);
 }
 
