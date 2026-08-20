@@ -655,9 +655,28 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
       <button class="mc on" id="mc-lbl"   onclick="toggleLabels()"    ><i class="bx bx-purchase-tag-alt"></i><span class="tt">Label Kabel</span></button>
       <button class="mc on" id="mc-anim"  onclick="toggleAnim()"      ><i class="bx bx-bolt"></i><span class="tt">Animasi Kabel</span></button>
       <div class="mc-sep"></div>
-      <button class="mc" onclick="quickAddSymbol('tiang_loop')" style="border-color:#0f172a;color:#0f172a;" title="Tambah Tiang Loop Fiber (Simbol 1 - Sketsa Kiri)"><i class="bx bx-radio-circle-marked"></i><span class="tt">+ Tiang Loop</span></button>
-      <button class="mc" onclick="quickAddSymbol('slack_loop')" style="border-color:#0f172a;color:#0f172a;" title="Tambah Oval Joint Closure (Simbol 2 - Sketsa Tengah)"><i class="bx bx-infinite"></i><span class="tt">+ Oval Closure</span></button>
-      <button class="mc" onclick="quickAddSymbol('tiang_tumpu')" style="border-color:#0f172a;color:#0f172a;" title="Tambah Tiang Tumpu T-Bar (Simbol 3 - Sketsa Kanan)"><i class="bx bx-plus-medical"></i><span class="tt">+ Tiang Tumpu</span></button>
+      <button class="mc" onclick="quickAddSymbol('tiang_loop')" style="color:#0f172a;display:flex;align-items:center;justify-content:center;" title="Tambah Tiang Loop Fiber (+ Tiang Loop)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M12 3v18M6 8h12"/>
+        </svg>
+        <span class="tt">+ Tiang Loop</span>
+      </button>
+
+      <button class="mc" onclick="quickAddSymbol('slack_loop')" style="color:#0f172a;display:flex;align-items:center;justify-content:center;" title="Tambah Oval Joint Closure (+ Oval Closure)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ellipse cx="12" cy="12" rx="8" ry="4"/>
+          <path d="M3 12h18M12 7v10"/>
+        </svg>
+        <span class="tt">+ Oval Closure</span>
+      </button>
+
+      <button class="mc" onclick="quickAddSymbol('tiang_tumpu')" style="color:#0f172a;display:flex;align-items:center;justify-content:center;" title="Tambah Tiang Tumpu T-Bar (+ Tiang Tumpu)">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M4 6h16M12 6v15"/>
+        </svg>
+        <span class="tt">+ Tiang Tumpu</span>
+      </button>
       <button class="mc" onclick="startDrawCable()"  ><i class="bx bx-edit-alt"></i><span class="tt">Gambar Kabel</span></button>
       <button class="mc" onclick="openPingTerminal()"><i class="bx bx-terminal"></i><span class="tt">Ping Terminal</span></button>
       <button class="mc" onclick="startMeasure()"    ><i class="bx bx-ruler"></i><span class="tt">Ukur Jarak</span></button>
