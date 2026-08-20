@@ -7,11 +7,10 @@ use App\Models\Tagihan;
 use App\Models\TiketGangguan;
 use App\Models\BotResponse;
 use App\Services\TelegramService;
-use App\Services\WhatsappClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\DB;
 
 class TelegramBotController extends Controller
 {
@@ -40,33 +39,108 @@ class TelegramBotController extends Controller
         $text      = trim($message['text'] ?? '');
         $firstName = $message['from']['first_name'] ?? 'Pelanggan';
         $username  = $message['from']['username'] ?? '';
-        $lowerText = strtolower($text);
 
+        return $this->processIncomingMessage($chatId, $text, $firstName, $username);
+    }
+
+    /**
+     * Long Polling Fetcher (untuk Localhost tanpa Webhook HTTPS)
+     */
+    public function pollOnce()
+    {
+        $setting = DB::table('telegram_settings')->first();
+        if (!$setting || empty($setting->bot_token)) {
+            return response()->json(['success' => false, 'message' => 'Bot Token belum dikonfigurasi']);
+        }
+
+        $token = $setting->bot_token;
+        $offset = cache()->get('telegram_last_offset', 0);
+
+        try {
+            $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getUpdates", [
+                'offset' => $offset,
+                'limit' => 20
+            ]);
+
+            if ($response->successful()) {
+                $results = $response->json()['result'] ?? [];
+                $processedCount = 0;
+
+                foreach ($results as $update) {
+                    $offset = $update['update_id'] + 1;
+                    cache()->put('telegram_last_offset', $offset, 86400);
+
+                    $message = $update['message'] ?? $update['edited_message'] ?? null;
+                    if ($message && isset($message['chat']['id'])) {
+                        $chatId    = $message['chat']['id'];
+                        $text      = trim($message['text'] ?? '');
+                        $firstName = $message['from']['first_name'] ?? 'Pelanggan';
+                        $username  = $message['from']['username'] ?? '';
+
+                        $this->processIncomingMessage($chatId, $text, $firstName, $username);
+                        $processedCount++;
+                    }
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'processed_messages' => $processedCount,
+                    'new_offset' => $offset
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error("Telegram Poll Error: " . $e->getMessage());
+            return response()->json(['success' => false, 'error' => $e->getMessage()]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Gagal mengambil pesan dari Telegram']);
+    }
+
+    /**
+     * Core Logic untuk memproses pesan Telegram & Membalas Otomatis
+     */
+    public function processIncomingMessage($chatId, $text, $firstName = 'Pelanggan', $username = '')
+    {
         if (empty($text)) {
             return response()->json(['status' => 'empty_text']);
         }
 
-        // 1. Command /start, /menu, /help
+        $lowerText = strtolower($text);
+
+        // 1. Sapaan Ramah: halo, hi, p, bot, ping, tes, pagi, siang, malam, salam
+        $greetings = ['halo', 'hi', 'p', 'bot', 'ping', 'tes', 'pagi', 'siang', 'malam', 'assalamualaikum', 'salam'];
+        if (in_array($lowerText, $greetings)) {
+            $msg = "Halo Kak <b>" . htmlspecialchars($firstName) . "</b>! 👋\n\n";
+            $msg .= "Selamat datang di <b>Rozitech Network Bot</b>!\n\n";
+            $msg .= "Ada yang bisa kami bantu? Ketik <b>/menu</b> atau <b>menu</b> untuk melihat daftar layanan otomatis kami:\n\n";
+            $msg .= "💳 <code>/bayar</code> → Cek Tagihan & Pembayaran Otomatis\n";
+            $msg .= "🎫 <code>/tiket [keluhan]</code> → Lapor Gangguan Jaringan\n";
+            $msg .= "📡 <code>/status</code> → Cek Status Sinyal ONT & Paket";
+            $this->telegramService->sendMessage($chatId, $msg);
+            return response()->json(['status' => 'greeting_sent']);
+        }
+
+        // 2. Command /start, /menu, /help, menu
         if ($lowerText === '/start' || $lowerText === '/menu' || $lowerText === '/help' || $lowerText === 'menu') {
             return $this->sendMenu($chatId, $firstName);
         }
 
-        // 2. Command /bayar, tagihan, bayar
+        // 3. Command /bayar, tagihan, bayar, cek tagihan
         if (str_starts_with($lowerText, '/bayar') || str_starts_with($lowerText, 'bayar') || str_starts_with($lowerText, 'tagihan') || str_starts_with($lowerText, 'cek tagihan')) {
             return $this->handleBayarCommand($chatId, $text, $firstName);
         }
 
-        // 3. Command /tiket, lapor, trouble, gangguan
+        // 4. Command /tiket, lapor, trouble, gangguan
         if (str_starts_with($lowerText, '/tiket') || str_starts_with($lowerText, 'lapor') || str_starts_with($lowerText, 'trouble') || str_starts_with($lowerText, 'gangguan')) {
             return $this->handleTiketCommand($chatId, $text, $firstName);
         }
 
-        // 4. Command /status, status, cek status
+        // 5. Command /status, status, cek status
         if (str_starts_with($lowerText, '/status') || str_starts_with($lowerText, 'status') || str_starts_with($lowerText, 'cek status')) {
             return $this->handleStatusCommand($chatId, $text, $firstName);
         }
 
-        // 5. Check Keyword Response in Database
+        // 6. Check Keyword Response in Database
         $botResponse = $this->findKeywordResponse($text);
         if ($botResponse) {
             $reply = str_replace(
@@ -78,7 +152,7 @@ class TelegramBotController extends Controller
             return response()->json(['status' => 'matched_keyword']);
         }
 
-        // 6. AI Fallback Response
+        // 7. AI Fallback Response
         $aiReply = $this->getAiResponse($text, $firstName);
         if ($aiReply) {
             $this->telegramService->sendMessage($chatId, $aiReply);
@@ -86,7 +160,7 @@ class TelegramBotController extends Controller
         }
 
         // Fallback default
-        $defaultMsg = "🤖 <b>ROZITECH TELEGRAM BOT</b>\n\nKetik <b>/menu</b> atau <b>menu</b> untuk melihat daftar opsi bantuan otomatis.";
+        $defaultMsg = "🤖 <b>ROZITECH TELEGRAM BOT</b>\n\nHalo Kak <b>" . htmlspecialchars($firstName) . "</b>, ketik <b>/menu</b> atau <b>menu</b> untuk melihat daftar opsi bantuan otomatis.";
         $this->telegramService->sendMessage($chatId, $defaultMsg);
         return response()->json(['status' => 'default_reply']);
     }
@@ -117,7 +191,6 @@ class TelegramBotController extends Controller
      */
     protected function handleBayarCommand($chatId, $text, $firstName)
     {
-        // Ekstrak kode jika ada (contoh: /bayar AD20)
         $parts = explode(' ', trim($text));
         $code  = count($parts) > 1 ? strtoupper($parts[1]) : null;
 
@@ -168,7 +241,7 @@ class TelegramBotController extends Controller
         $info .= "<b>TOTAL TAGIHAN: Rp " . number_format($total, 0, ',', '.') . "</b>\n\n";
         $info .= "🔗 <b>LINK PEMBAYARAN OTOMATIS:</b>\n";
         $info .= "<a href=\"{$paymentUrl}\">👉 Klik Di Sini Untuk Bayar (QRIS/Transfer/E-Wallet)</a>\n\n";
-        $info .= "<i>Setelah pembayaran selesai di link di atas, koneksi internet Anda akan otomatis aktif kembali secara instan tanpa perlu kirim bukti bayar!</i>";
+        $info .= "<i>Setelah pembayaran selesai di link di atas, koneksi internet Anda akan otomatis aktif kembali secara instan!</i>";
 
         $this->telegramService->sendMessage($chatId, $info);
         return response()->json(['status' => 'bill_sent']);
@@ -189,7 +262,6 @@ class TelegramBotController extends Controller
             return response()->json(['status' => 'prompt_ticket']);
         }
 
-        // Ekstrak kode jika ada di kata pertama
         $words = explode(' ', $cleanText);
         $code  = strtoupper($words[0]);
         $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
@@ -205,7 +277,6 @@ class TelegramBotController extends Controller
             $keluhan = implode(' ', $words);
             if (empty($keluhan)) $keluhan = "Laporan gangguan koneksi internet";
         } else {
-            // Pelanggan umum/default
             $pelanggan = Pelanggan::first();
             $idPelanggan = $pelanggan?->id_pelanggan ?? 1;
         }
@@ -226,11 +297,10 @@ class TelegramBotController extends Controller
         $reply .= "Keluhan   : <i>" . htmlspecialchars($keluhan) . "</i>\n";
         $reply .= "Status    : 🟡 <b>OPEN (Dalam Antrean Teknisi)</b>\n";
         $reply .= "--------------------------------------\n";
-        $reply .= "Notifikasi laporan ini telah otomatis diteruskan ke Tim Teknisi & Manajer Support. Petugas kami akan segera menghubungi Anda. Terima kasih!";
+        $reply .= "Notifikasi laporan ini telah otomatis diteruskan ke Tim Teknisi & Manajer Support. Terima kasih!";
 
         $this->telegramService->sendMessage($chatId, $reply);
 
-        // Forward alert ke Telegram Admin Group
         $adminAlert = "⚠️ <b>TIKET GANGGUAN BARU (#{$kodeTiket})</b>\n";
         $adminAlert .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan ?? $firstName) . "</b>\n";
         $adminAlert .= "No WA     : " . ($pelanggan->no_wa ?? '-') . "\n";
@@ -336,7 +406,6 @@ class TelegramBotController extends Controller
      */
     protected function formatForTelegram($text)
     {
-        // Simple formatter from markdown bold *bold* to <b>bold</b>
         $formatted = preg_replace('/\*(.*?)\*/s', '<b>$1</b>', $text);
         return $formatted;
     }

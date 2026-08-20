@@ -150,7 +150,14 @@
                     <form action="{{ route('telegram.webhook.set') }}" method="POST">
                         @csrf
                         <button type="submit" class="btn btn-success w-100">
-                            <i class="bx bx-sync me-1"></i> Hubungkan Webhook Otomatis
+                            <i class="bx bx-sync me-1"></i> Hubungkan Webhook Otomatis (Production HTTPS)
+                        </button>
+                    </form>
+
+                    <form action="{{ route('telegram.poll-once') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-warning text-dark w-100 fw-bold">
+                            <i class="bx bx-refresh me-1"></i> Sinkronkan & Balas Pesan Masuk (Localhost)
                         </button>
                     </form>
 

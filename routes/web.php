@@ -312,6 +312,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('telegram/manager', [\App\Http\Controllers\TelegramManagementController::class, 'index'])->name('telegram.index');
         Route::post('telegram/manager/update', [\App\Http\Controllers\TelegramManagementController::class, 'update'])->name('telegram.update');
         Route::post('telegram/manager/set-webhook', [\App\Http\Controllers\TelegramManagementController::class, 'setWebhook'])->name('telegram.webhook.set');
+        Route::post('telegram/manager/poll-once', [\App\Http\Controllers\TelegramBotController::class, 'pollOnce'])->name('telegram.poll-once');
         Route::post('telegram/manager/test', [\App\Http\Controllers\TelegramManagementController::class, 'testMessage'])->name('telegram.test');
     });
 
