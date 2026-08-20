@@ -642,6 +642,9 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
       <button class="mc on" id="mc-lbl"   onclick="toggleLabels()"    ><i class="bx bx-purchase-tag-alt"></i><span class="tt">Label Kabel</span></button>
       <button class="mc on" id="mc-anim"  onclick="toggleAnim()"      ><i class="bx bx-bolt"></i><span class="tt">Animasi Kabel</span></button>
       <div class="mc-sep"></div>
+      <button class="mc" onclick="quickAddSymbol('tiang_loop')" style="border-color:#0f172a;color:#0f172a;" title="Tambah Tiang Loop Fiber (Simbol 1 - Sketsa Kiri)"><i class="bx bx-radio-circle-marked"></i><span class="tt">+ Tiang Loop</span></button>
+      <button class="mc" onclick="quickAddSymbol('slack_loop')" style="border-color:#0f172a;color:#0f172a;" title="Tambah Oval Joint Closure (Simbol 2 - Sketsa Tengah)"><i class="bx bx-infinite"></i><span class="tt">+ Oval Closure</span></button>
+      <button class="mc" onclick="quickAddSymbol('tiang_tumpu')" style="border-color:#0f172a;color:#0f172a;" title="Tambah Tiang Tumpu T-Bar (Simbol 3 - Sketsa Kanan)"><i class="bx bx-plus-medical"></i><span class="tt">+ Tiang Tumpu</span></button>
       <button class="mc" onclick="startDrawCable()"  ><i class="bx bx-edit-alt"></i><span class="tt">Gambar Kabel</span></button>
       <button class="mc" onclick="openPingTerminal()"><i class="bx bx-terminal"></i><span class="tt">Ping Terminal</span></button>
       <button class="mc" onclick="startMeasure()"    ><i class="bx bx-ruler"></i><span class="tt">Ukur Jarak</span></button>
@@ -3536,17 +3539,84 @@ function renderKabelList() {
   }).join('');
 }
 
+function quickAddSymbol(kategori) {
+  var names = {
+    'tiang_loop': 'Tiang Loop Fiber',
+    'slack_loop': 'Joint Closure Oval',
+    'tiang_tumpu': 'Tiang Tumpu T-Bar'
+  };
+  var defaultName = names[kategori] || 'Item';
+  var nextNum = (DATA.items || []).filter(i => i.kategori === kategori).length + 1;
+  var fullDefault = `${defaultName} #${nextNum}`;
+  
+  var name = prompt(`Masukkan Nama / Kode untuk ${defaultName}:`, fullDefault);
+  if (name === null) return;
+  if (!name.trim()) name = fullDefault;
+
+  showToast(`Modus Pasang Simbol: Klik titik mana saja di peta untuk menempatkan "${name}"...`, 'ok');
+  
+  if (MAP && MAP.getContainer()) MAP.getContainer().style.cursor = 'crosshair';
+  
+  MAP.once('click', async (e) => {
+    if (MAP && MAP.getContainer()) MAP.getContainer().style.cursor = '';
+    if (!e || !e.latlng) return;
+    
+    showToast(`Menyimpan "${name}" ke koordinat peta...`, 'ok');
+    try {
+      await api('POST', `${BASE}/ftth/api/items`, {
+        nama: name,
+        kategori: kategori,
+        latitude: e.latlng.lat,
+        longitude: e.latlng.lng,
+        status: 'online',
+        snmp_community: 'public'
+      });
+      showToast(`Berhasil menempatkan "${name}" pada peta!`, 'ok');
+      loadAll(true);
+    } catch(err) {
+      showToast('Gagal menyimpan item: ' + err.message, 'er');
+    }
+  });
+}
+
 function renderItemList() {
   var el = document.getElementById('tc-item'); if (!el) return;
-  var hdr = `<div class="sec-hdr">ITEM JARINGAN<button class="add-btn" onclick="openAddPanel('item')"><i class="bx bx-plus"></i> Tambah Item</button></div>`;
-  if (!DATA.items.length) { el.innerHTML = hdr+'<div style="padding:10px 8px;color:var(--muted);font-size:11px;">Belum ada item.</div>'; return; }
-  el.innerHTML = hdr + DATA.items.map(n => {
+  var quickBar = `
+    <div class="sec-hdr" style="background:#0f172a;color:#fff;">3 SIMBOL MANDIRI (KLIK & PASANG)</div>
+    <div style="padding:8px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;flex-direction:column;gap:5px;">
+      <button onclick="quickAddSymbol('tiang_loop')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;border:1px solid #cbd5e1;background:#ffffff;cursor:pointer;font-size:11px;font-weight:700;color:#0f172a;transition:all .15s;">
+        <svg width="18" height="24" viewBox="0 0 30 40" fill="none"><circle cx="15" cy="15" r="11" stroke="#000" stroke-width="2.5" fill="#fff"/><rect x="2" y="12" width="26" height="6" stroke="#000" stroke-width="2" fill="#fff"/><rect x="12" y="2" width="6" height="36" stroke="#000" stroke-width="2" fill="#fff"/></svg>
+        <span style="flex:1;">+ Tiang Loop Fiber <small style="color:#64748b;display:block;font-weight:400;font-size:9px;">(Simbol 1 - Sketsa Kiri)</small></span>
+      </button>
+
+      <button onclick="quickAddSymbol('slack_loop')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;border:1px solid #cbd5e1;background:#ffffff;cursor:pointer;font-size:11px;font-weight:700;color:#0f172a;transition:all .15s;">
+        <svg width="22" height="16" viewBox="0 0 40 30" fill="none"><ellipse cx="20" cy="15" rx="17" ry="8" stroke="#000" stroke-width="2.5" fill="#fff"/><rect x="2" y="12" width="36" height="6" rx="2" stroke="#000" stroke-width="2" fill="#fff"/><rect x="16" y="3" width="8" height="24" rx="2" stroke="#000" stroke-width="2" fill="#fff"/></svg>
+        <span style="flex:1;">+ Joint Closure Oval <small style="color:#64748b;display:block;font-weight:400;font-size:9px;">(Simbol 2 - Sketsa Tengah)</small></span>
+      </button>
+
+      <button onclick="quickAddSymbol('tiang_tumpu')" style="display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:6px;border:1px solid #cbd5e1;background:#ffffff;cursor:pointer;font-size:11px;font-weight:700;color:#0f172a;transition:all .15s;">
+        <svg width="16" height="22" viewBox="0 0 24 34" fill="none"><line x1="2" y1="10" x2="22" y2="10" stroke="#000" stroke-width="3"/><line x1="12" y1="3" x2="12" y2="32" stroke="#000" stroke-width="3"/></svg>
+        <span style="flex:1;">+ Tiang Tumpu T-Bar <small style="color:#64748b;display:block;font-weight:400;font-size:9px;">(Simbol 3 - Sketsa Kanan)</small></span>
+      </button>
+    </div>
+    <div class="sec-hdr">DAFTAR ITEM TERPASANG (${DATA.items.length})</div>`;
+
+  if (!DATA.items.length) {
+    el.innerHTML = quickBar + '<div style="padding:10px 8px;color:var(--muted);font-size:11px;">Belum ada item terpasang. Klik tombol di atas untuk menambah.</div>';
+    return;
+  }
+
+  el.innerHTML = quickBar + DATA.items.map(n => {
     var cat = String(n.kategori||'');
     var clr = ITEM_COLORS[cat]||'#2563eb';
-    return `<div class="ni">
+    return `<div class="ni" id="si-item-${n.id}" onclick="flyToNode('item',${n.id})">
       <div class="ni-dot" style="background:${clr};"></div>
-      <div class="ni-name">${String(n.nama||'Item')}</div>
-      <span class="ni-badge" style="font-size:9px;color:${clr};">${cat.replace('_',' ')}</span>
+      <div class="ni-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${String(n.nama||'Item')}</div>
+      <span class="ni-badge" style="font-size:9px;color:${clr};margin-right:4px;">${cat.replace('_',' ').toUpperCase()}</span>
+      <div style="display:flex;gap:4px;align-items:center;">
+        <button onclick="event.stopPropagation(); openEditNode('item',${n.id})" style="background:none;border:none;color:#0284c7;cursor:pointer;font-size:14px;padding:2px;" title="Edit Item"><i class="bx bx-edit"></i></button>
+        <button onclick="event.stopPropagation(); if(confirm('Hapus item ${n.nama}?')) deleteNode('item',${n.id})" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:14px;padding:2px;" title="Hapus Item"><i class="bx bx-trash"></i></button>
+      </div>
     </div>`;
   }).join('');
 }
