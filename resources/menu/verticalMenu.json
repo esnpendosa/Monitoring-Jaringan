@@ -44,10 +44,10 @@
       ]
     },
     {
-      "url": "/register-wifi",
+      "url": "/registrasi",
       "name": "Registrasi Pasang Baru",
       "icon": "menu-icon icon-base bx bx-user-plus",
-      "slug": "register-wifi"
+      "slug": "pelanggan-registrasi"
     },
     {
       "menuHeader": "Operasional Workflow"
