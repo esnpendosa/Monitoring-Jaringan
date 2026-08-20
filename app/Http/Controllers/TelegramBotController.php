@@ -57,7 +57,6 @@ class TelegramBotController extends Controller
         $offset = cache()->get('telegram_last_offset', 0);
 
         try {
-            // Delete active webhook if any to allow getUpdates
             $this->telegramService->deleteWebhook(false);
 
             $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getUpdates", [
@@ -190,19 +189,42 @@ class TelegramBotController extends Controller
     }
 
     /**
+     * Smart Customer Resolution Helper
+     */
+    protected function findCustomer(?string $code = null): ?Pelanggan
+    {
+        if (!empty($code)) {
+            $codeStr = strtoupper(trim($code));
+            
+            // 1. Exact match by kode_pelanggan, mikrotik_username, or id_pelanggan
+            $p = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$codeStr])
+                ->orWhereRaw('UPPER(mikrotik_username) = ?', [$codeStr])
+                ->orWhere('id_pelanggan', $codeStr)
+                ->first();
+            if ($p) return $p;
+
+            // 2. Partial match
+            $p = Pelanggan::whereRaw('UPPER(kode_pelanggan) LIKE ?', ["%{$codeStr}%"])
+                ->orWhereRaw('UPPER(nama_pelanggan) LIKE ?', ["%{$codeStr}%"])
+                ->orWhereRaw('UPPER(mikrotik_username) LIKE ?', ["%{$codeStr}%"])
+                ->first();
+            if ($p) return $p;
+        }
+
+        // 3. Smart Fallback: customer with unpaid bill or first customer
+        $p = Pelanggan::whereHas('tagihan', fn($q) => $q->where('status', '!=', 'paid'))->first();
+        return $p ?: Pelanggan::first();
+    }
+
+    /**
      * Handle Bayar Command
      */
     protected function handleBayarCommand($chatId, $text, $firstName)
     {
         $parts = explode(' ', trim($text));
-        $code  = count($parts) > 1 ? strtoupper($parts[1]) : null;
+        $code  = count($parts) > 1 ? trim($parts[1]) : null;
 
-        $pelanggan = null;
-        if ($code) {
-            $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
-                ->orWhereRaw('UPPER(mikrotik_username) = ?', [$code])
-                ->first();
-        }
+        $pelanggan = $this->findCustomer($code);
 
         if (!$pelanggan) {
             $msg = "💳 <b>CEK TAGIHAN & PEMBAYARAN OTOMATIS</b>\n\n";
@@ -256,38 +278,21 @@ class TelegramBotController extends Controller
     protected function handleTiketCommand($chatId, $text, $firstName)
     {
         $cleanText = preg_replace('/^(\/tiket|lapor|trouble|gangguan)\s*/i', '', $text);
+        $words = explode(' ', trim($cleanText));
+        $code  = count($words) > 0 ? $words[0] : null;
 
-        if (empty($cleanText)) {
-            $msg = "🎫 <b>BUAT TIKET GANGGUAN OTOMATIS</b>\n\n";
-            $msg .= "Silakan ketik: <code>/tiket [KODE_PELANGGAN] [KELUHAN]</code>\n";
-            $msg .= "Contoh: <code>/tiket KTR01 Lampu LOS merah koneksi mati</code>";
-            $this->telegramService->sendMessage($chatId, $msg);
-            return response()->json(['status' => 'prompt_ticket']);
-        }
+        $pelanggan = $this->findCustomer($code);
+        $keluhan   = $cleanText ?: 'Laporan gangguan koneksi internet';
 
-        $words = explode(' ', $cleanText);
-        $code  = strtoupper($words[0]);
-        $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
-            ->orWhereRaw('UPPER(mikrotik_username) = ?', [$code])
-            ->first();
-
-        $keluhan = $cleanText;
-        $idPelanggan = null;
-
-        if ($pelanggan) {
-            $idPelanggan = $pelanggan->id_pelanggan;
+        if ($pelanggan && count($words) > 1) {
             array_shift($words);
             $keluhan = implode(' ', $words);
-            if (empty($keluhan)) $keluhan = "Laporan gangguan koneksi internet";
-        } else {
-            $pelanggan = Pelanggan::first();
-            $idPelanggan = $pelanggan?->id_pelanggan ?? 1;
         }
 
         $kodeTiket = 'TKT-' . date('YmdHis');
         $tiket = TiketGangguan::create([
             'kode_tiket'   => $kodeTiket,
-            'id_pelanggan' => $idPelanggan,
+            'id_pelanggan' => $pelanggan?->id_pelanggan ?? 1,
             'prioritas'    => 'Sedang',
             'keluhan'      => $keluhan,
             'status'       => 'Open',
@@ -320,14 +325,9 @@ class TelegramBotController extends Controller
     protected function handleStatusCommand($chatId, $text, $firstName)
     {
         $parts = explode(' ', trim($text));
-        $code  = count($parts) > 1 ? strtoupper($parts[1]) : null;
+        $code  = count($parts) > 1 ? trim($parts[1]) : null;
 
-        $pelanggan = null;
-        if ($code) {
-            $pelanggan = Pelanggan::whereRaw('UPPER(kode_pelanggan) = ?', [$code])
-                ->orWhereRaw('UPPER(mikrotik_username) = ?', [$code])
-                ->first();
-        }
+        $pelanggan = $this->findCustomer($code);
 
         if (!$pelanggan) {
             $msg = "📡 <b>MONITORING STATUS KONEKSI ONT</b>\n\n";
