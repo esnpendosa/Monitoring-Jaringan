@@ -65,9 +65,7 @@ class BroadcastNotificationController extends Controller
                 NotificationHelper::sendToAll('broadcast', $title, $body, $options);
                 $msg = "Push Notifikasi Kustom berhasil dikirim ke SELAMAT SEMUA Pengguna & Perangkat PWA!";
             } else {
-                NotificationHelper::sendToRole($target, 'broadcast', $title, $body, $options);
-                // Juga kirimkan broadcast null untuk peran tersebut
-                NotificationHelper::broadcast('broadcast', "[{$target}] {$title}", $body, $options);
+                NotificationHelper::sendToRole($target, 'broadcast', "[{$target}] {$title}", $body, $options);
                 $msg = "Push Notifikasi Kustom berhasil dikirim ke grup role '{$target}'!";
             }
 
