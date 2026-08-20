@@ -1430,14 +1430,16 @@ function initMap() {
       zoomControl: false,
       attributionControl: false,
       renderer: canvasRenderer,
-      fadeAnimation: true,
+      fadeAnimation: false,
       zoomAnimation: true,
-      markerZoomAnimation: true
+      zoomAnimationThreshold: 8,
+      markerZoomAnimation: true,
+      wheelPxPerZoomLevel: 120
     });
 
-    satTile   = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{attribution:'© Google Earth Satellite',maxZoom:20,updateWhenZooming:false,updateWhenIdle:true});
-    darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d'],updateWhenZooming:false,updateWhenIdle:true});
-    osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c'],updateWhenZooming:false,updateWhenIdle:true});
+    satTile   = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{subdomains:['mt0','mt1','mt2','mt3'],maxZoom:20,maxNativeZoom:19,updateWhenZooming:false,updateWhenIdle:true,keepBuffer:6});
+    darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d'],updateWhenZooming:false,updateWhenIdle:true,keepBuffer:6});
+    osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c'],updateWhenZooming:false,updateWhenIdle:true,keepBuffer:6});
 
     currentTile = satTile; // Default to Google Earth Satellite tile!
     satTile.addTo(MAP);
