@@ -292,6 +292,23 @@ class TelegramBotController extends Controller
             'status'       => 'Open',
         ]);
 
+        // Push In-App Notification to Web Navbar Dropdown
+        $pelangganName = $pelanggan->nama_pelanggan ?? $firstName;
+        try {
+            \App\Helpers\NotificationHelper::broadcast(
+                'tiket_baru',
+                '🎫 Tiket Gangguan Baru (Telegram)',
+                "Tiket #{$kodeTiket} dari {$pelangganName}: {$keluhan}",
+                [
+                    'icon'       => 'bx-error-circle',
+                    'color'      => 'danger',
+                    'action_url' => route('tiket.index'),
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('In-app notification broadcast error: ' . $e->getMessage());
+        }
+
         $reply = "🎫 <b>TIKET GANGGUAN BERHASIL DIBUAT!</b>\n";
         $reply .= "--------------------------------------\n";
         $reply .= "No Tiket  : <code>{$kodeTiket}</code>\n";
