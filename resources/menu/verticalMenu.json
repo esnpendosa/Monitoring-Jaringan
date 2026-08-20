@@ -1,87 +1,91 @@
 {
   "menu": [
     {
-      "url": "/",
+      "url": "/dashboard",
       "name": "Dashboard",
-      "icon": "menu-icon icon-base bx bx-home-smile",
-      "slug": "dashboard",
-      "permission": "dashboard_view"
+      "icon": "menu-icon icon-base bx bx-home-circle",
+      "slug": "dashboard"
     },
     {
-      "url": "/my-connection",
-      "name": "Koneksi Saya",
-      "icon": "menu-icon icon-base bx bx-wifi",
-      "slug": "my-connection"
+      "menuHeader": "Monitoring & GIS"
     },
     {
-      "menuHeader": "Manajemen Data",
-      "permission": "pelanggan_manage"
+      "name": "Peta & Jaringan FTTH",
+      "icon": "menu-icon icon-base bx bx-map-alt",
+      "slug": "ftth-group",
+      "submenu": [
+        {
+          "url": "/ftth",
+          "name": "Peta GIS FTTH",
+          "slug": "ftth"
+        },
+        {
+          "url": "/my-connection",
+          "name": "Koneksi Saya (ONT)",
+          "slug": "my-connection"
+        }
+      ]
     },
     {
-      "url": "/pelanggan",
-      "name": "Data Pelanggan",
-      "icon": "menu-icon icon-base bx bx-user",
-      "slug": "pelanggan",
-      "permission": "pelanggan_manage"
+      "name": "Monitoring Perangkat",
+      "icon": "menu-icon icon-base bx bx-chip",
+      "slug": "device-group",
+      "submenu": [
+        {
+          "url": "/admin/modem",
+          "name": "Router MikroTik",
+          "slug": "modem-admin"
+        },
+        {
+          "url": "/modem",
+          "name": "Katalog Modem",
+          "slug": "modem"
+        }
+      ]
     },
     {
-      "url": "/pelanggan/monitoring",
-      "name": "Monitoring WiFi",
-      "icon": "menu-icon icon-base bx bx-wifi",
-      "slug": "pelanggan.monitoring",
-      "permission": "pelanggan_manage"
-    },
-    {
-      "url": "/registrasi",
-      "name": "Registrasi Baru",
+      "url": "/register-wifi",
+      "name": "Registrasi Pasang Baru",
       "icon": "menu-icon icon-base bx bx-user-plus",
-      "slug": "registrasi",
-      "permission": "pelanggan_manage"
+      "slug": "register-wifi"
     },
     {
-      "url": "/ftth",
-      "name": "FTTH Network Manager",
-      "icon": "menu-icon icon-base bx bx-map-pin",
-      "slug": "ftth",
-      "permission": "pelanggan_manage"
+      "menuHeader": "Operasional Workflow"
     },
     {
-      "menuHeader": "Operasional"
+      "name": "Manajemen Pelanggan",
+      "icon": "menu-icon icon-base bx bx-group",
+      "slug": "pelanggan-group",
+      "submenu": [
+        {
+          "url": "/pelanggan",
+          "name": "Data Pelanggan",
+          "slug": "pelanggan"
+        },
+        {
+          "url": "/tiket",
+          "name": "Tiket Gangguan",
+          "slug": "tiket"
+        }
+      ]
     },
     {
-      "url": "/tiket",
-      "name": "Tiket Gangguan",
-      "icon": "menu-icon icon-base bx bx-error-circle",
-      "slug": "tiket",
-      "permission": "tiket_manage"
-    },
-    {
-      "url": "/scan",
-      "name": "Scan QR / Barcode",
-      "icon": "menu-icon icon-base bx bx-qr-scan",
-      "slug": "scan",
-      "permission": "mikrotik_monitor"
-    },
-    {
-      "url": "/mikrotik",
-      "name": "Monitoring Mikrotik",
-      "icon": "menu-icon icon-base bx bx-server",
-      "slug": "mikrotik",
-      "permission": "mikrotik_monitor"
-    },
-    {
-      "url": "/inventory",
-      "name": "Inventaris Alat",
+      "name": "Inventaris & Alat",
       "icon": "menu-icon icon-base bx bx-wrench",
-      "slug": "inventory",
-      "permission": "inventory_manage"
-    },
-    {
-      "url": "/kas-bon",
-      "name": "Kas Bon Pekerja",
-      "icon": "menu-icon icon-base bx bx-money",
-      "slug": "kas-bon",
-      "permission": "user_manage"
+      "slug": "inventory-group",
+      "submenu": [
+        {
+          "url": "/inventory",
+          "name": "Stok Inventaris Alat",
+          "slug": "inventory",
+          "permission": "inventory_manage"
+        },
+        {
+          "url": "/scan",
+          "name": "Scan QR / Barcode",
+          "slug": "scan"
+        }
+      ]
     },
     {
       "url": "/notifications/broadcast",
@@ -90,138 +94,91 @@
       "slug": "notifications-broadcast"
     },
     {
-      "menuHeader": "Keuangan"
+      "menuHeader": "Keuangan & Billing"
     },
     {
-      "url": "/finance/dashboard",
       "name": "Manajemen Keuangan",
       "icon": "menu-icon icon-base bx bx-calculator",
-      "slug": "finance-dashboard"
-    },
-    {
-      "url": "/billing",
-      "name": "Daftar Tagihan",
-      "icon": "menu-icon icon-base bx bx-wallet",
-      "slug": "billing",
-      "permission": "billing_view"
-    },
-    {
-      "url": "/upgrade-paket",
-      "name": "Upgrade Paket WiFi",
-      "icon": "menu-icon icon-base bx bx-chevrons-up",
-      "slug": "upgrade-paket"
-    },
-    {
-      "url": "/tutorial",
-      "name": "Tutorial",
-      "icon": "menu-icon icon-base bx bx-book-open",
-      "slug": "tutorial"
-    },
-    {
-      "url": "/modem",
-      "name": "Modem",
-      "icon": "menu-icon icon-base bx bx-chip",
-      "slug": "modem"
-    },
-    {
-      "url": "/settings/payment",
-      "name": "Pengaturan Gateway Pembayaran",
-      "icon": "menu-icon icon-base bx bx-cog",
-      "slug": "settings-payment",
-      "permission": "user_manage"
-    },
-    {
-      "menuHeader": "Sistem"
-    },
-    {
-      "name": "Absensi Pegawai",
-      "icon": "menu-icon icon-base bx bx-fingerprint",
-      "slug": "absensi",
+      "slug": "finance-group",
       "submenu": [
         {
-          "url": "/absensi/today",
-          "name": "Absensi Hari Ini",
-          "slug": "absensi-today"
+          "url": "/finance/dashboard",
+          "name": "Dashboard Finance",
+          "slug": "finance-dashboard"
         },
         {
-          "url": "/absensi",
-          "name": "Rekap Kehadiran",
-          "slug": "absensi-recap"
+          "url": "/billing",
+          "name": "Daftar Tagihan",
+          "slug": "billing",
+          "permission": "billing_view"
         },
         {
-          "url": "/absensi/settings",
-          "name": "Pengaturan Alat",
-          "slug": "absensi-settings",
+          "url": "/kas-bon",
+          "name": "Kas Bon Pekerja",
+          "slug": "kas-bon",
+          "permission": "user_manage"
+        },
+        {
+          "url": "/upgrade-paket",
+          "name": "Upgrade Paket WiFi",
+          "slug": "upgrade-paket"
+        },
+        {
+          "url": "/settings/payment",
+          "name": "Gateway Pembayaran",
+          "slug": "settings-payment",
           "permission": "user_manage"
         }
       ]
     },
     {
-      "url": "/users",
-      "name": "Manajemen Pengguna",
-      "icon": "menu-icon icon-base bx bx-group",
-      "slug": "users",
-      "permission": "user_manage"
+      "menuHeader": "Sistem & Otomatisasi"
     },
     {
-      "url": "/admin/intern-tasks",
-      "name": "Task List Magang",
-      "icon": "menu-icon icon-base bx bx-task",
-      "slug": "admin-intern-tasks",
-      "permission": "user_manage"
-    },
-    {
-      "url": "/bot/responses",
-      "name": "Auto Responder Bot",
-      "icon": "menu-icon icon-base bx bx-message-rounded-dots",
-      "slug": "bot",
-      "permission": "user_manage"
-    },
-    {
-      "url": "/whatsapp/manager",
-      "name": "WhatsApp Multi-Device",
-      "icon": "menu-icon icon-base bx bxl-whatsapp",
-      "slug": "whatsapp-manager",
-      "permission": "user_manage"
-    },
-    {
-      "url": "/telegram/manager",
-      "name": "Telegram Bot Manager",
-      "icon": "menu-icon icon-base bx bxl-telegram",
-      "slug": "telegram-manager",
-      "permission": "user_manage"
-    },
-    {
-      "url": "/whatsapp/status-schedule",
-      "name": "Penjadwal Status WA",
-      "icon": "menu-icon icon-base bx bx-time-five",
-      "slug": "whatsapp-status",
-      "permission": "user_manage"
-    },
-    {
-      "url": "/system/logs",
-      "name": "Cek Logs Realtime",
-      "icon": "menu-icon icon-base bx bx-terminal",
-      "slug": "logs",
-      "permission": "user_manage"
-    },
-    {
-      "name": "Laporan",
-      "icon": "menu-icon icon-base bx bx-chart",
-      "slug": "laporan",
-      "permission": "report_view",
+      "name": "Bot Automation Manager",
+      "icon": "menu-icon icon-base bx bx-bot",
+      "slug": "bot-group",
       "submenu": [
         {
-          "url": "/laporan",
-          "name": "Statistik Gangguan",
-          "slug": "laporan.index"
+          "url": "/whatsapp/manager",
+          "name": "WhatsApp Bot Manager",
+          "slug": "whatsapp-manager",
+          "permission": "user_manage"
         },
         {
-          "url": "/laporan/rekap-pembayaran",
-          "name": "Rekap Pembayaran (Excel)",
-          "slug": "laporan.rekap-pembayaran"
+          "url": "/telegram/manager",
+          "name": "Telegram Bot Manager",
+          "slug": "telegram-manager"
+        },
+        {
+          "url": "/bot/responses",
+          "name": "AI Bot Responses",
+          "slug": "bot-responses"
+        },
+        {
+          "url": "/whatsapp/status-schedule",
+          "name": "Jadwal Broadcast WA",
+          "slug": "whatsapp-status"
         }
       ]
+    },
+    {
+      "name": "Kepegawaian & Presensi",
+      "icon": "menu-icon icon-base bx bx-user-check",
+      "slug": "hr-group",
+      "submenu": [
+        {
+          "url": "/absensi",
+          "name": "Absensi Sidik Jari & GPS",
+          "slug": "absensi"
+        }
+      ]
+    },
+    {
+      "url": "/tutorial",
+      "name": "Tutorial & Panduan",
+      "icon": "menu-icon icon-base bx bx-book-open",
+      "slug": "tutorial"
     }
   ]
 }
