@@ -448,7 +448,7 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
   transition:transform .3s cubic-bezier(.175,.885,.32,1.275);pointer-events:none;
   display:flex;align-items:center;gap:6px;
 }
-#toast.show{transform:translateX(-50%) translateY(0);}
+#toast.show{transform:translateX(-50%) translateY(0);pointer-events:auto!important;}
 #toast.ok{border-color:rgba(22,163,74,.4);color:var(--green);}
 #toast.er{border-color:rgba(220,38,38,.4);color:var(--red);}
 
@@ -3884,14 +3884,17 @@ async function api(method, url, body) {
 
 // ──────────────── TOAST ────────────────────────────────────────────────
 var toastT;
+function hideToast() {
+  var el = document.getElementById('toast');
+  if (el) el.classList.remove('show');
+}
+
 function showToast(msg, type='ok') {
   var el = document.getElementById('toast');
   if (!el) return;
   var icon = type==='ok' ? '<i class="bx bx-check-circle"></i>' : '<i class="bx bx-error-circle"></i>';
-  el.innerHTML = `${icon} <span style="flex:1;">${msg}</span> <i class="bx bx-x" onclick="document.getElementById('toast').classList.remove('show');event.stopPropagation();" style="cursor:pointer;font-size:16px;opacity:0.6;margin-left:8px;" title="Tutup"></i>`;
+  el.innerHTML = `${icon} <span style="flex:1;">${msg}</span> <button onclick="hideToast()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:18px;padding:0 4px;margin-left:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;opacity:0.75;" title="Tutup Notifikasi"><i class="bx bx-x"></i></button>`;
   el.className = 'show ' + (type==='ok'?'ok':'er');
-  el.style.pointerEvents = 'auto';
-  el.onclick = function() { el.classList.remove('show'); };
   
   clearTimeout(toastT);
   toastT = setTimeout(() => {

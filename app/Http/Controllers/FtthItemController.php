@@ -36,6 +36,13 @@ class FtthItemController extends Controller
     // ═══════════════════════════════════════════
     public function store(Request $request)
     {
+        if ($request->filled('id')) {
+            $existingItem = FtthItem::find($request->id);
+            if ($existingItem) {
+                return $this->update($request, $existingItem);
+            }
+        }
+
         $data = $request->validate([
             'kategori'       => 'required|in:' . implode(',', array_keys(FtthItem::KATEGORI_LABELS)),
             'nama'           => 'required|string|max:255',
@@ -83,6 +90,7 @@ class FtthItemController extends Controller
     public function update(Request $request, FtthItem $ftthItem)
     {
         $data = $request->validate([
+            'kategori'       => 'sometimes|required|in:' . implode(',', array_keys(FtthItem::KATEGORI_LABELS)),
             'nama'           => 'sometimes|required|string|max:255',
             'latitude'       => 'nullable|numeric|between:-90,90',
             'longitude'      => 'nullable|numeric|between:-180,180',
