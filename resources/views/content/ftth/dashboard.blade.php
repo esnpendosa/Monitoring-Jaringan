@@ -166,12 +166,17 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
 }
 #map-ctrls::-webkit-scrollbar{display:none;}
 .mc{
-  width:34px;height:34px;border-radius:8px;border:1px solid #cbd5e1;
-  background:#ffffff;color:#0f172a;cursor:pointer;font-size:16px;
+  width:36px;height:36px;border-radius:8px;border:1.5px solid #64748b;
+  background:#ffffff;color:#0f172a;cursor:pointer;font-size:17px;
   display:flex;align-items:center;justify-content:center;transition:all .15s;
-  position:relative;box-shadow:0 2px 8px rgba(0,0,0,.2);flex-shrink:0;
+  position:relative;box-shadow:0 2px 8px rgba(0,0,0,.25);flex-shrink:0;
 }
-.mc:hover,.mc.on{background:#e0f2fe;border-color:#0284c7;color:#0284c7;}
+.mc svg{
+  width:20px;height:20px;display:block;
+}
+.mc:hover,.mc.on{background:#0284c7!important;border-color:#0284c7!important;color:#ffffff!important;}
+.mc:hover svg path,.mc.on svg path,.mc:hover svg circle,.mc.on svg circle,.mc:hover svg ellipse,.mc.on svg ellipse{stroke:#ffffff!important;}
+.mc:hover svg polygon,.mc.on svg polygon{fill:#ffffff!important;}
 .mc .tt{
   position:absolute;right:40px;white-space:nowrap;
   background:rgba(255,255,255,.98);color:var(--text);font-size:10px;
@@ -653,27 +658,27 @@ html,body{height:100%;font-family:'Inter',system-ui,-apple-system,BlinkMacSystem
       <button class="mc on" id="mc-ont"   onclick="toggleLyr('ont')"  ><i class="bx bx-home-alt"></i><span class="tt">ONT</span></button>
       <button class="mc on" id="mc-item"  onclick="toggleLyr('item')" ><i class="bx bx-map-pin"></i><span class="tt">Item</span></button>
       <button class="mc on" id="mc-lbl"   onclick="toggleLabels()"    ><i class="bx bx-purchase-tag-alt"></i><span class="tt">Label Kabel</span></button>
-      <button class="mc on" id="mc-anim"  onclick="toggleAnim()"      ><i class="bx bx-bolt"></i><span class="tt">Animasi Kabel</span></button>
+      <button class="mc on" id="mc-anim"  onclick="toggleAnim()" title="Animasi Kabel"><svg width="18" height="18" viewBox="0 0 24 24" fill="#0f172a"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span class="tt">Animasi Kabel</span></button>
       <div class="mc-sep"></div>
-      <button class="mc" onclick="quickAddSymbol('tiang_loop')" style="color:#0f172a;display:flex;align-items:center;justify-content:center;" title="Tambah Tiang Loop Fiber (+ Tiang Loop)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M12 3v18M6 8h12"/>
+      <button class="mc" onclick="quickAddSymbol('tiang_loop')" title="Tambah Tiang Loop Fiber (+ Tiang Loop)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round">
+          <circle cx="12" cy="7" r="4.5" stroke="#0f172a" stroke-width="2.2" fill="#ffffff"/>
+          <path d="M12 2.5v19M4 7.5h16" stroke="#0f172a" stroke-width="2.5"/>
         </svg>
         <span class="tt">+ Tiang Loop</span>
       </button>
 
-      <button class="mc" onclick="quickAddSymbol('slack_loop')" style="color:#0f172a;display:flex;align-items:center;justify-content:center;" title="Tambah Oval Joint Closure (+ Oval Closure)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <ellipse cx="12" cy="12" rx="8" ry="4"/>
-          <path d="M3 12h18M12 7v10"/>
+      <button class="mc" onclick="quickAddSymbol('slack_loop')" title="Tambah Oval Joint Closure (+ Oval Closure)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round">
+          <ellipse cx="12" cy="12" rx="9" ry="4.5" stroke="#0f172a" stroke-width="2.2" fill="#ffffff"/>
+          <path d="M2.5 12h19M12 6.5v11" stroke="#0f172a" stroke-width="2.5"/>
         </svg>
         <span class="tt">+ Oval Closure</span>
       </button>
 
-      <button class="mc" onclick="quickAddSymbol('tiang_tumpu')" style="color:#0f172a;display:flex;align-items:center;justify-content:center;" title="Tambah Tiang Tumpu T-Bar (+ Tiang Tumpu)">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M4 6h16M12 6v15"/>
+      <button class="mc" onclick="quickAddSymbol('tiang_tumpu')" title="Tambah Tiang Tumpu T-Bar (+ Tiang Tumpu)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="square">
+          <path d="M3 6h18M12 6v15" stroke="#0f172a" stroke-width="3"/>
         </svg>
         <span class="tt">+ Tiang Tumpu</span>
       </button>
