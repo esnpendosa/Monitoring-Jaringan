@@ -1418,14 +1418,26 @@ var activeWifiPelanggan = null, activePopupPelanggan = null;
 var trafficCharts = {};
 var autoRefreshTimer;
 
+var isPanning = false;
+
 // ──────────────── INIT ──────────────────────────────────────────────
 function initMap() {
   try {
-    MAP = L.map('ftth-map',{center:[-7.1207,112.5959],zoom:14,zoomControl:false,attributionControl:false,preferCanvas:true});
+    var canvasRenderer = L.canvas({ padding: 0.5, tolerance: 10 });
+    MAP = L.map('ftth-map', {
+      center: [-7.1207, 112.5959],
+      zoom: 14,
+      zoomControl: false,
+      attributionControl: false,
+      renderer: canvasRenderer,
+      fadeAnimation: true,
+      zoomAnimation: true,
+      markerZoomAnimation: true
+    });
 
-    satTile   = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{attribution:'© Google Earth Satellite',maxZoom:20});
-    darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d']});
-    osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c']});
+    satTile   = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{attribution:'© Google Earth Satellite',maxZoom:20,updateWhenZooming:false,updateWhenIdle:true});
+    darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d'],updateWhenZooming:false,updateWhenIdle:true});
+    osmTile   = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19,subdomains:['a','b','c'],updateWhenZooming:false,updateWhenIdle:true});
 
     currentTile = satTile; // Default to Google Earth Satellite tile!
     satTile.addTo(MAP);
@@ -1433,10 +1445,14 @@ function initMap() {
     [L_CABLE,L_LABEL,L_ITEM,L_ODP,L_ODC,L_OLT,L_ONT].forEach(l => l.addTo(MAP));
     L.control.zoom({position:'bottomright'}).addTo(MAP);
 
+    MAP.on('movestart', () => { isPanning = true; });
+    MAP.on('moveend', () => { isPanning = false; });
+
     var lastMoveTime = 0;
     MAP.on('mousemove', e => {
+      if (isPanning) return;
       var now = Date.now();
-      if (now - lastMoveTime < 100) return;
+      if (now - lastMoveTime < 150) return;
       lastMoveTime = now;
       var c = document.getElementById('st-coords');
       if (c && e.latlng) c.textContent = `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
@@ -1445,7 +1461,9 @@ function initMap() {
     MAP.on('dblclick', e => { if (drawActive) { e.originalEvent.preventDefault(); finishDraw(); } });
 
     loadAll();
-    autoRefreshTimer = setInterval(() => loadAll(true), 60000);
+    autoRefreshTimer = setInterval(() => {
+      if (!isPanning && !drawActive) loadAll(true);
+    }, 120000);
     makeLegendDraggable();
 
     setTimeout(() => {
