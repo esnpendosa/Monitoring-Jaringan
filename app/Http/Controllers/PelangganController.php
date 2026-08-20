@@ -562,7 +562,17 @@ class PelangganController extends Controller
         }
 
         $registrations = $query->get();
-        return view('content.pelanggan.registrasi', compact('registrations'));
+        $routers = \App\Models\Router::all();
+        $packages = [
+            'umum' => 'umum (Rp 100.000)',
+            '100rb 3mb' => '100rb 3mb (Rp 100.000)',
+            '120rb 8mb' => '120rb 8mb (Rp 120.000)',
+            '130rb 12mb' => '130rb 12mb (Rp 130.000)',
+            '150rb 20mb' => '150rb 20mb (Rp 150.000)',
+            '200rb 35mb' => '200rb 35mb (Rp 200.000)',
+        ];
+
+        return view('content.pelanggan.registrasi', compact('registrations', 'routers', 'packages'));
     }
 
     public function sendRegistrasiToGroup(Pelanggan $pelanggan)
