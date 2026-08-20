@@ -79,6 +79,7 @@ Route::get('billing', function(\Illuminate\Http\Request $request) {
 Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index']);
 
     // Intern Tasks & Kanban Board
     Route::post('/intern/tasks/{task}/status', [DashboardController::class, 'updateInternTaskStatus'])->name('intern.tasks.update-status');
