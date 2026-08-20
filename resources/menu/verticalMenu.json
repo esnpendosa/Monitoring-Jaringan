@@ -124,15 +124,8 @@
       "slug": "modem"
     },
     {
-      "url": "/keuangan",
-      "name": "Keuangan & PSB",
-      "icon": "menu-icon icon-base bx bx-calculator",
-      "slug": "keuangan",
-      "permission": "user_manage"
-    },
-    {
       "url": "/settings/payment",
-      "name": "Set Pembayaran",
+      "name": "Pengaturan Gateway Pembayaran",
       "icon": "menu-icon icon-base bx bx-cog",
       "slug": "settings-payment",
       "permission": "user_manage"

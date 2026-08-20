@@ -1,22 +1,25 @@
 @extends('layouts/contentNavbarLayout')
 
-@section('title', 'Manajemen Keuangan & Kas (Role Finance)')
+@section('title', 'Manajemen Keuangan & Arus Kas (Role Finance)')
 
 @section('content')
-<div class="row mb-4">
-    <div class="col-12 d-flex justify-content-between align-items-center">
+<div class="row mb-3">
+    <div class="col-12 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <div>
             <h4 class="fw-bold mb-1">
-                <i class="bx bx-wallet text-primary me-2"></i> Manajemen Keuangan & Arus Kas (Finance)
+                <i class="bx bx-calculator text-primary me-2"></i> Portal Manajemen Keuangan (Finance)
             </h4>
-            <p class="text-muted mb-0">Modul khusus Bendahara & Tim Finance untuk mengelola kas masuk, kas keluar, dan rekapitulasi laba rugi NMS.</p>
+            <p class="text-muted mb-0">Pusat kendali arus kas, pencatatan transaksi masuk/keluar, tagihan pelanggan, dan laporan laba rugi NMS.</p>
         </div>
-        <div>
-            <a href="{{ route('billing.index') }}" class="btn btn-outline-primary rounded-pill me-2 shadow-sm">
-                <i class="bx bx-receipt me-1"></i> Daftar Tagihan Pelanggan
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ route('billing.index') }}" class="btn btn-outline-primary rounded-pill shadow-sm">
+                <i class="bx bx-receipt me-1"></i> Tagihan Pelanggan
             </a>
             <a href="{{ route('kas-bon.index') }}" class="btn btn-outline-warning rounded-pill shadow-sm">
-                <i class="bx bx-money me-1"></i> Pengajuan Kas Bon
+                <i class="bx bx-money me-1"></i> Kas Bon Pekerja
+            </a>
+            <a href="{{ route('settings.payment') }}" class="btn btn-outline-secondary rounded-pill shadow-sm">
+                <i class="bx bx-cog me-1"></i> Gateway Pembayaran
             </a>
         </div>
     </div>
@@ -40,44 +43,44 @@
 <div class="row mb-4">
     <!-- Card Saldo Kas Bersih -->
     <div class="col-md-4 mb-3">
-        <div class="card border-0 shadow-sm bg-primary text-white">
+        <div class="card border-0 shadow-sm bg-primary text-white h-100">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="fw-semibold text-white-50">SALDO KAS BERSIH (NET)</span>
-                    <div class="avatar bg-white bg-opacity-20 rounded p-2 text-white">
-                        <i class="bx bx-dollar-circle fs-3"></i>
+                    <div class="p-2 rounded bg-white bg-opacity-20 text-white d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+                        <i class="bx bx-wallet fs-4"></i>
                     </div>
                 </div>
                 <h2 class="text-white fw-bold mb-1">Rp {{ number_format($netBalance, 0, ',', '.') }}</h2>
-                <small class="text-white-50">Total akumulasi saldo kas penerimaan dikurangi pengeluaran</small>
+                <small class="text-white-50">Total akumulasi penerimaan dikurangi pengeluaran</small>
             </div>
         </div>
     </div>
 
     <!-- Card Pemasukan Bulan Ini -->
     <div class="col-md-4 mb-3">
-        <div class="card border-0 shadow-sm bg-success text-white">
+        <div class="card border-0 shadow-sm bg-success text-white h-100">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="fw-semibold text-white-50">PEMASUKAN BULAN INI</span>
-                    <div class="avatar bg-white bg-opacity-20 rounded p-2 text-white">
-                        <i class="bx bx-trending-up fs-3"></i>
+                    <div class="p-2 rounded bg-white bg-opacity-20 text-white d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+                        <i class="bx bx-trending-up fs-4"></i>
                     </div>
                 </div>
                 <h2 class="text-white fw-bold mb-1">Rp {{ number_format($monthIncome, 0, ',', '.') }}</h2>
-                <small class="text-white-50">Total Tagihan Lunas + PSB Bulan {{ sprintf('%02d', $bulan) }}/{{ $tahun }}</small>
+                <small class="text-white-50">Tagihan Lunas + PSB Bulan {{ sprintf('%02d', $bulan) }}/{{ $tahun }}</small>
             </div>
         </div>
     </div>
 
     <!-- Card Pengeluaran Bulan Ini -->
     <div class="col-md-4 mb-3">
-        <div class="card border-0 shadow-sm bg-danger text-white">
+        <div class="card border-0 shadow-sm bg-danger text-white h-100">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-2">
                     <span class="fw-semibold text-white-50">PENGELUARAN BULAN INI</span>
-                    <div class="avatar bg-white bg-opacity-20 rounded p-2 text-white">
-                        <i class="bx bx-trending-down fs-3"></i>
+                    <div class="p-2 rounded bg-white bg-opacity-20 text-white d-flex align-items-center justify-content-center" style="width:42px; height:42px;">
+                        <i class="bx bx-trending-down fs-4"></i>
                     </div>
                 </div>
                 <h2 class="text-white fw-bold mb-1">Rp {{ number_format($monthExpense, 0, ',', '.') }}</h2>
@@ -102,9 +105,9 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Jenis Transaksi Kas <span class="text-danger">*</span></label>
                         <select name="tipe" class="form-select" required>
-                            <option value="pengeluaran">🔴 Pengeluaran Kas (Beli Perangkat/Operasional)</option>
-                            <option value="psb">🟢 Pemasukan Pasang Baru (PSB)</option>
-                            <option value="pemasukan">🟢 Pemasukan Kas Lainnya</option>
+                            <option value="pengeluaran">Pengeluaran Kas (Beli Perangkat/Operasional)</option>
+                            <option value="psb">Pemasukan Pasang Baru (PSB)</option>
+                            <option value="pemasukan">Pemasukan Kas Lainnya</option>
                         </select>
                     </div>
 
