@@ -27,10 +27,21 @@
       ]
     },
     {
-      "url": "/admin/modem",
       "name": "Modem",
       "icon": "menu-icon icon-base bx bx-chip",
-      "slug": "modem-admin"
+      "slug": "modem-group",
+      "submenu": [
+        {
+          "url": "/admin/modem",
+          "name": "Manajemen Modem & ONT",
+          "slug": "modem-admin"
+        },
+        {
+          "url": "/modem",
+          "name": "Katalog Modem",
+          "slug": "modem"
+        }
+      ]
     },
     {
       "url": "/register-wifi",
