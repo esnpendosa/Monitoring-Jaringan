@@ -240,19 +240,21 @@ class FtthItemController extends Controller
     // ═══════════════════════════════════════════
     public function importKmz(Request $request)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:kmz,kml,zip|max:10240',
-        ]);
+        $file = $request->file('file') ?? $request->file('kmz_file');
 
-        $file     = $request->file('file');
+        if (!$file) {
+            return response()->json(['success' => false, 'message' => 'Pilih file KMZ atau KML terlebih dahulu.'], 422);
+        }
+
+        $origName = $file->getClientOriginalName();
         $ext      = strtolower($file->getClientOriginalExtension());
         $tmpPath  = $file->getRealPath();
         $kmlContent = null;
 
-        if ($ext === 'kmz' || $ext === 'zip') {
+        if ($ext === 'kmz' || $ext === 'zip' || str_ends_with(strtolower($origName), '.kmz')) {
             $zip = new \ZipArchive();
             if ($zip->open($tmpPath) !== true) {
-                return response()->json(['success' => false, 'message' => 'File KMZ tidak valid.'], 422);
+                return response()->json(['success' => false, 'message' => 'File KMZ tidak valid atau terproteksi.'], 422);
             }
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $name = $zip->getNameIndex($i);
@@ -267,15 +269,17 @@ class FtthItemController extends Controller
         }
 
         if (!$kmlContent) {
-            return response()->json(['success' => false, 'message' => 'Tidak ditemukan konten KML.'], 422);
+            return response()->json(['success' => false, 'message' => 'Tidak ditemukan konten KML di dalam file KMZ.'], 422);
         }
 
-        $imported = $this->parseKmlAndImport($kmlContent);
+        $result = $this->parseKmlAndImport($kmlContent);
 
         return response()->json([
             'success'  => true,
-            'imported' => $imported,
-            'message'  => "Berhasil import {$imported} item dari KMZ.",
+            'imported' => $result['total'],
+            'points'   => $result['points'],
+            'cables'   => $result['cables'],
+            'message'  => "Berhasil import KMZ: {$result['points']} Titik Perangkat & {$result['cables']} Jalur Kabel FO!",
         ]);
     }
 

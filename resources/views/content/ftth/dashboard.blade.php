@@ -3402,9 +3402,10 @@ async function submitImportFile() {
     showToast('Pilih file CSV / KMZ terlebih dahulu','er');
     return;
   }
-  showToast('Memproses file import...','ok');
+  showToast('Memproses file import KMZ / KML...','ok');
   var formData = new FormData();
   formData.append('kmz_file', fileInput.files[0]);
+  formData.append('file', fileInput.files[0]);
 
   try {
     var res = await fetch(`${BASE}/ftth/import-kmz`, {
@@ -3413,8 +3414,8 @@ async function submitImportFile() {
       body: formData,
     });
     var json = await res.json();
-    if (!res.ok) throw new Error(json.message || 'Gagal import');
-    showToast('Import berhasil! Data telah dimasukkan.','ok');
+    if (!res.ok || !json.success) throw new Error(json.message || 'Gagal import KMZ');
+    showToast(json.message || 'Import KMZ berhasil! Data telah dimasukkan.','ok');
     closeModal('m-backup');
     loadAll(true);
   } catch(e) {
