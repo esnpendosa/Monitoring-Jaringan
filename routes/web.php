@@ -222,6 +222,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('profile', [ProfileController::class, 'index'])->name('profile.index');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
 
+    // Modul Keuangan & Finance Role
+    Route::get('finance/dashboard', [\App\Http\Controllers\FinanceManagementController::class, 'index'])->name('finance.index');
+    Route::post('finance/transaction', [\App\Http\Controllers\FinanceManagementController::class, 'storeTransaction'])->name('finance.store');
+    Route::delete('finance/transaction/{id}', [\App\Http\Controllers\FinanceManagementController::class, 'destroyTransaction'])->name('finance.destroy');
+
     // Billing (Handled by the public proxy route above)
 
     Route::get('billing/{tagihan}/pay', [\App\Http\Controllers\PaymentController::class, 'getSnapToken'])->name('billing.pay');

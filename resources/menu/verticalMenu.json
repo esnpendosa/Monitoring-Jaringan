@@ -93,6 +93,12 @@
       "menuHeader": "Keuangan"
     },
     {
+      "url": "/finance/dashboard",
+      "name": "Manajemen Keuangan",
+      "icon": "menu-icon icon-base bx bx-calculator",
+      "slug": "finance-dashboard"
+    },
+    {
       "url": "/billing",
       "name": "Daftar Tagihan",
       "icon": "menu-icon icon-base bx bx-wallet",
