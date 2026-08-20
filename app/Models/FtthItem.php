@@ -33,31 +33,40 @@ class FtthItem extends Model
     // ─── Kategori constants ─────────────────────────────────────
     const KATEGORI_LABELS = [
         'server_router' => 'Server/Router',
-        'tiang_tumpu'   => 'Tiang Tumpu',
+        'tiang_tumpu'   => 'Tiang Tumpu T-Bar',
+        'tiang_loop'    => 'Tiang Loop Fiber',
+        'slack_loop'    => 'Joint Closure Oval / Loop',
         'tiang_odp'     => 'Tiang ODP',
         'tiang_odc'     => 'Tiang ODC',
-        'joint_closure' => 'Joint Closure',
+        'joint_closure' => 'Joint Closure Box',
         'htb'           => 'HTB',
+        'htb_ap'        => 'HTB & Access Point',
         'access_point'  => 'Access Point',
     ];
 
     const KATEGORI_EMOJI = [
         'server_router' => '🖥️',
         'tiang_tumpu'   => '📡',
+        'tiang_loop'    => '⭕',
+        'slack_loop'    => '🔄',
         'tiang_odp'     => '🔗',
         'tiang_odc'     => '🌐',
         'joint_closure' => '🔌',
         'htb'           => '📶',
+        'htb_ap'        => '📶',
         'access_point'  => '📶',
     ];
 
     const KATEGORI_COLOR = [
         'server_router' => '#6366f1',
-        'tiang_tumpu'   => '#64748b',
+        'tiang_tumpu'   => '#0f172a',
+        'tiang_loop'    => '#0f172a',
+        'slack_loop'    => '#0f172a',
         'tiang_odp'     => '#0ea5e9',
         'tiang_odc'     => '#8b5cf6',
         'joint_closure' => '#f97316',
         'htb'           => '#06b6d4',
+        'htb_ap'        => '#06b6d4',
         'access_point'  => '#10b981',
     ];
 
@@ -121,10 +130,13 @@ class FtthItem extends Model
         $prefix = [
             'server_router' => 'SVR',
             'tiang_tumpu'   => 'TTM',
+            'tiang_loop'    => 'TLP',
+            'slack_loop'    => 'SLK',
             'tiang_odp'     => 'TODP',
             'tiang_odc'     => 'TODC',
             'joint_closure' => 'JC',
             'htb'           => 'HTB',
+            'htb_ap'        => 'HTB',
             'access_point'  => 'AP',
         ][$kategori] ?? 'ITEM';
 

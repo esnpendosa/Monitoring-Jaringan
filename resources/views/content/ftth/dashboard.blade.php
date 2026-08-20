@@ -1785,18 +1785,81 @@ function renderKabel(k) {
 }
 
 var ITEM_COLORS = {
-  tiang_tumpu:'#64748b', tiang_odp:'#2563eb', tiang_odc:'#7c3aed',
+  tiang_tumpu:'#0f172a', tiang_loop:'#0f172a', slack_loop:'#0f172a',
+  tiang_odp:'#2563eb', tiang_odc:'#7c3aed',
   joint_closure:'#ea580c', htb_ap:'#059669', server_router:'#d97706',
 };
+
+function makeItemIcon(kategori, status, name, desc) {
+  var descHtml = desc ? `<span class="sub-desc">${desc}</span>` : '';
+  var nameHtml = name ? `<div class="node-label-pill">${name}${descHtml}</div>` : '';
+  
+  var svgContent = '';
+  var anchorY = 20;
+
+  if (kategori === 'tiang_loop') {
+    // Icon 1 (Sama persis Gambar Kiri): Circle + Hollow Horizontal Rect + Hollow Vertical Rect
+    anchorY = 20;
+    svgContent = `
+      <svg width="30" height="40" viewBox="0 0 30 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="15" cy="15" r="11" stroke="#000000" stroke-width="2.5" fill="#ffffff"/>
+        <rect x="2" y="12" width="26" height="6" stroke="#000000" stroke-width="2" fill="#ffffff"/>
+        <rect x="12" y="2" width="6" height="36" stroke="#000000" stroke-width="2" fill="#ffffff"/>
+      </svg>`;
+  } else if (kategori === 'slack_loop' || kategori === 'joint_closure_oval') {
+    // Icon 2 (Sama persis Gambar Tengah): Oval + Hollow Horizontal Bar + Hollow Vertical Bar
+    anchorY = 15;
+    svgContent = `
+      <svg width="40" height="30" viewBox="0 0 40 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="20" cy="15" rx="17" ry="8" stroke="#000000" stroke-width="2.5" fill="#ffffff"/>
+        <rect x="2" y="12" width="36" height="6" rx="2" stroke="#000000" stroke-width="2" fill="#ffffff"/>
+        <rect x="16" y="3" width="8" height="24" rx="2" stroke="#000000" stroke-width="2" fill="#ffffff"/>
+      </svg>`;
+  } else if (kategori === 'tiang_tumpu') {
+    // Icon 3 (Sama persis Gambar Kanan): Solid T-Bar Line Pole
+    anchorY = 17;
+    svgContent = `
+      <svg width="24" height="34" viewBox="0 0 24 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <line x1="2" y1="10" x2="22" y2="10" stroke="#000000" stroke-width="3" stroke-linecap="square"/>
+        <line x1="12" y1="3" x2="12" y2="32" stroke="#000000" stroke-width="3" stroke-linecap="square"/>
+      </svg>`;
+  } else {
+    var color = ITEM_COLORS[kategori] || '#2563eb';
+    return L.divIcon({
+      className: '',
+      html: `<div style="display:flex;flex-direction:column;align-items:center;">
+              <div class="gis-marker" style="width:30px;height:30px;background:${color};color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">
+                <i class="bx bx-map-pin"></i>
+              </div>
+              ${nameHtml}
+            </div>`,
+      iconSize: [80, desc ? 56 : 48], iconAnchor: [40, 15], popupAnchor: [0, -18]
+    });
+  }
+
+  return L.divIcon({
+    className: '',
+    html: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
+            <div style="display:flex;align-items:center;justify-content:center;filter:drop-shadow(0px 2px 4px rgba(0,0,0,0.35));">
+              ${svgContent}
+            </div>
+            ${nameHtml}
+          </div>`,
+    iconSize: [80, desc ? 60 : 50], iconAnchor: [40, anchorY], popupAnchor: [0, -anchorY]
+  });
+}
+
 function renderItem(n) {
   if (!n.latitude && !n.lat) return;
   var lat = parseFloat(n.latitude||n.lat), lng = parseFloat(n.longitude||n.lng);
   if (!lat||!lng) return;
-  var color = ITEM_COLORS[n.kategori] || '#2563eb';
+  var desc = n.deskripsi || n.catatan || '';
   var catName = (n.kategori || 'item').replace('_', ' ').toUpperCase();
   
-  var m = L.circleMarker([lat,lng],{radius:6,color:color,fillColor:color,fillOpacity:.85,weight:2});
-  m.bindTooltip(`<b>${catName}</b>: ${String(n.nama||'Item')}`, {permanent:false});
+  var m = L.marker([lat,lng], {
+    icon: makeItemIcon(n.kategori, n.status, n.nama || 'Item', desc),
+    draggable: true
+  });
   
   var extraInfo = `
     <div class="p-row"><span class="lbl"><i class="bx bx-purchase-tag"></i> Kategori</span><span class="val">${catName}</span></div>
@@ -1813,6 +1876,7 @@ function renderItem(n) {
     type: 'item'
   }, catName, extraInfo));
   
+  m.on('dragend', e => savePos('item', n.id, e.target.getLatLng()));
   m.on('click', (e) => handleMarkerClick('item', n.id, m.getLatLng(), () => hiSidebar('item', n.id), e));
   L_ITEM.addLayer(m);
   markerReg['item_'+n.id] = m;
@@ -2954,6 +3018,22 @@ function openEditNode(type, id) {
       <div class="fg"><label>Serial ONT / MAC</label><input id="en-serial" type="text" value="${node.serial_ont||''}"></div>
       <div class="fg"><label>IP Address ONT</label><input id="en-ip" type="text" value="${node.ip_address||''}"></div>
       ${statusHtml}`;
+  } else if (type === 'item') {
+    var curCat = node.kategori || 'tiang_tumpu';
+    extraFg.innerHTML = `
+      <div class="fg"><label>Kategori Item (Simbol Map)</label>
+        <select id="en-kategori" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;">
+          <option value="tiang_loop" ${curCat==='tiang_loop'?'selected':''}>⭕ Tiang Loop Fiber (Simbol 1 - Sketsa Kiri)</option>
+          <option value="slack_loop" ${curCat==='slack_loop'?'selected':''}>🔄 Joint Closure Oval / Loop (Simbol 2 - Sketsa Tengah)</option>
+          <option value="tiang_tumpu" ${curCat==='tiang_tumpu'?'selected':''}>📡 Tiang Tumpu T-Bar (Simbol 3 - Sketsa Kanan)</option>
+          <option value="tiang_odp" ${curCat==='tiang_odp'?'selected':''}>🔗 Tiang ODP</option>
+          <option value="tiang_odc" ${curCat==='tiang_odc'?'selected':''}>🌐 Tiang ODC</option>
+          <option value="joint_closure" ${curCat==='joint_closure'?'selected':''}>🔌 Joint Closure Box</option>
+          <option value="htb_ap" ${curCat==='htb_ap'?'selected':''}>📶 HTB & Access Point</option>
+          <option value="server_router" ${curCat==='server_router'?'selected':''}>🖥️ Server / Core Router</option>
+        </select>
+      </div>
+      ${statusHtml}`;
   } else {
     extraFg.innerHTML = statusHtml;
   }
@@ -2979,6 +3059,7 @@ async function submitUpdateNode() {
     if (type === 'item') {
       var itemPayload = { id: parseInt(id), nama: nama, latitude: lat, longitude: lng, deskripsi: catatan };
       if (document.getElementById('en-status')) itemPayload.status = document.getElementById('en-status').value;
+      if (document.getElementById('en-kategori')) itemPayload.kategori = document.getElementById('en-kategori').value;
       await api('POST', `${BASE}/ftth/api/items`, itemPayload);
     } else {
       var payload = { type: type, nama: nama, latitude: lat, longitude: lng, deskripsi: catatan, catatan: catatan };
@@ -3630,12 +3711,14 @@ function openAddPanel(type) {
     : type==='item'
     ? `<div class="fg"><label>Kategori Item (11 Kategori)</label>
          <select id="an-cat">
-           <option value="tiang_tumpu" selected>Tiang Tumpu</option>
-           <option value="tiang_odp">Tiang ODP</option>
-           <option value="tiang_odc">Tiang ODC</option>
-           <option value="joint_closure">Joint Closure</option>
-           <option value="htb_ap">HTB & Access Point</option>
-           <option value="server_router">Server / Core Router</option>
+           <option value="tiang_loop" selected>⭕ Tiang Loop Fiber (Simbol 1 - Gambar 2 Kiri)</option>
+           <option value="slack_loop">🔄 Joint Closure Oval / Loop (Simbol 2 - Gambar 2 Tengah)</option>
+           <option value="tiang_tumpu">📡 Tiang Tumpu T-Bar (Simbol 3 - Gambar 2 Kanan)</option>
+           <option value="tiang_odp">🔗 Tiang ODP</option>
+           <option value="tiang_odc">🌐 Tiang ODC</option>
+           <option value="joint_closure">🔌 Joint Closure Box</option>
+           <option value="htb_ap">📶 HTB & Access Point</option>
+           <option value="server_router">🖥️ Server / Core Router</option>
            <option value="olt">OLT (Optical Line Terminal)</option>
            <option value="odc">ODC Cabinet</option>
            <option value="odp">ODP Box</option>
@@ -3676,6 +3759,10 @@ function openAddPanel(type) {
 }
 
 async function submitAddNode(type) {
+  var catEl = document.getElementById('an-cat');
+  if (catEl && catEl.value) {
+    type = 'item';
+  }
   var nama=document.getElementById('an-nama')?.value?.trim();
   var lat=parseFloat(document.getElementById('an-lat')?.value||'');
   var lng=parseFloat(document.getElementById('an-lng')?.value||'');
@@ -3696,7 +3783,7 @@ async function submitAddNode(type) {
     payload.ip_address=document.getElementById('an-ip')?.value||'';
     payload.no_wa=document.getElementById('an-wa')?.value||'';
   } else if (type==='item') {
-    payload.kategori=document.getElementById('an-cat')?.value||'tiang_tumpu';
+    payload.kategori=catEl?.value||'tiang_loop';
     payload.snmp_community=document.getElementById('an-snmp')?.value||'public';
     payload.status='online';
   } else {
@@ -3708,7 +3795,8 @@ async function submitAddNode(type) {
   var url = type==='olt' ? `${BASE}/ftth/api/olt` : type==='item' ? `${BASE}/ftth/api/items` : `${BASE}/ftth/api/node`;
   try {
     await api('POST',url,payload);
-    showToast(`${nama} berhasil ditambahkan`,'ok');
+    var catLabel = catEl ? catEl.options[catEl.selectedIndex]?.text : nama;
+    showToast(`Berhasil menambahkan: ${nama} (${catLabel||''})`,'ok');
     loadAll(true);
   } catch(e) { showToast(e.message,'er'); }
 }
