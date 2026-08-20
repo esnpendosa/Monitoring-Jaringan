@@ -140,16 +140,14 @@ class FtthItem extends Model
             'access_point'  => 'AP',
         ][$kategori] ?? 'ITEM';
 
-        $last = static::where('kategori', $kategori)
-            ->whereNotNull('kode')
-            ->orderByDesc('id')
-            ->value('kode');
+        $maxId = static::max('id') ?? 0;
+        $num = $maxId + 1;
 
-        $num = 1;
-        if ($last && preg_match('/(\d+)$/', $last, $m)) {
-            $num = (int) $m[1] + 1;
-        }
+        do {
+            $kode = $prefix . '-' . str_pad($num, 4, '0', STR_PAD_LEFT);
+            $num++;
+        } while (static::where('kode', $kode)->exists());
 
-        return $prefix . '-' . str_pad($num, 3, '0', STR_PAD_LEFT);
+        return $kode;
     }
 }

@@ -400,51 +400,162 @@ class FtthItemController extends Controller
         </Placemark>";
     }
 
-    private function parseKmlAndImport(string $kml): int
+    private function parseKmlAndImport(string $kml): array
     {
-        $imported = 0;
-        $xml = simplexml_load_string($kml);
-        if (!$xml) return 0;
+        $importedPoints = 0;
+        $importedCables = 0;
 
-        $xml->registerXPathNamespace('kml', 'http://www.opengis.net/kml/2.2');
-        $placemarks = $xml->xpath('//kml:Placemark') ?: $xml->xpath('//Placemark') ?: [];
-
-        foreach ($placemarks as $pm) {
-            $name   = (string) ($pm->name ?? '');
-            $coords = (string) ($pm->Point->coordinates ?? '');
-            if (!$coords) continue;
-
-            $parts = explode(',', trim($coords));
-            if (count($parts) < 2) continue;
-
-            $lng = (float) $parts[0];
-            $lat = (float) $parts[1];
-            if ($lat == 0 && $lng == 0) continue;
-
-            // Tebak kategori berdasarkan nama
-            $desc     = strtolower((string) ($pm->description ?? '') . ' ' . $name);
-            $kategori = 'tiang_tumpu'; // default
-            if (str_contains($desc, 'olt'))           $kategori = 'server_router';
-            elseif (str_contains($desc, 'odc'))       $kategori = 'tiang_odc';
-            elseif (str_contains($desc, 'odp'))       $kategori = 'tiang_odp';
-            elseif (str_contains($desc, 'joint') || str_contains($desc, 'closure')) $kategori = 'joint_closure';
-            elseif (str_contains($desc, 'htb'))       $kategori = 'htb';
-            elseif (str_contains($desc, 'ap') || str_contains($desc, 'access point')) $kategori = 'access_point';
-            elseif (str_contains($desc, 'server') || str_contains($desc, 'router'))   $kategori = 'server_router';
-
-            FtthItem::create([
-                'kategori'   => $kategori,
-                'nama'       => $name ?: "Import #{$imported}",
-                'kode'       => FtthItem::generateKode($kategori),
-                'latitude'   => $lat,
-                'longitude'  => $lng,
-                'status'     => 'online',
-                'updated_by' => Auth::user()->name ?? 'import',
-            ]);
-
-            $imported++;
+        $kmlClean = preg_replace('/xmlns[^=]*="[^"]*"/i', '', $kml);
+        $xml = @simplexml_load_string($kmlClean);
+        
+        if (!$xml) {
+            $xml = @simplexml_load_string($kml);
         }
 
-        return $imported;
+        if (!$xml) {
+            return ['total' => 0, 'points' => 0, 'cables' => 0];
+        }
+
+        $placemarks = $xml->xpath('//Placemark') ?: [];
+        $timeSeed = time() % 10000;
+
+        foreach ($placemarks as $idx => $pm) {
+            try {
+                $name = trim((string) ($pm->name ?? ''));
+                $desc = trim((string) ($pm->description ?? ''));
+                $searchStr = strtolower($name . ' ' . $desc);
+
+                // 1. Check for Point (Nodes/Devices/Poles)
+                $pointCoords = null;
+                if (isset($pm->Point->coordinates)) {
+                    $pointCoords = (string) $pm->Point->coordinates;
+                } elseif (isset($pm->MultiGeometry->Point->coordinates)) {
+                    $pointCoords = (string) $pm->MultiGeometry->Point->coordinates;
+                }
+
+                if ($pointCoords) {
+                    $parts = explode(',', trim($pointCoords));
+                    if (count($parts) >= 2) {
+                        $lng = (float) trim($parts[0]);
+                        $lat = (float) trim($parts[1]);
+
+                        if ($lat != 0 || $lng != 0) {
+                            $kategori = 'tiang_tumpu';
+                            if (str_contains($searchStr, 'olt')) {
+                                $kategori = 'server_router';
+                            } elseif (str_contains($searchStr, 'odc')) {
+                                $kategori = 'tiang_odc';
+                            } elseif (str_contains($searchStr, 'odp') || str_contains($searchStr, 'cto') || str_contains($searchStr, 'nap')) {
+                                $kategori = 'tiang_odp';
+                            } elseif (str_contains($searchStr, 'joint') || str_contains($searchStr, 'closure') || str_contains($searchStr, 'muffe') || str_contains($searchStr, 'ceos')) {
+                                $kategori = 'slack_loop';
+                            } elseif (str_contains($searchStr, 'loop') || str_contains($searchStr, 'coil')) {
+                                $kategori = 'tiang_loop';
+                            } elseif (str_contains($searchStr, 'tiang') || str_contains($searchStr, 'pole') || str_contains($searchStr, 'poste')) {
+                                $kategori = 'tiang_tumpu';
+                            } elseif (str_contains($searchStr, 'htb') || str_contains($searchStr, 'converter')) {
+                                $kategori = 'htb_ap';
+                            } elseif (str_contains($searchStr, 'ap') || str_contains($searchStr, 'wifi') || str_contains($searchStr, 'access point')) {
+                                $kategori = 'htb_ap';
+                            }
+
+                            $prefix = [
+                                'server_router' => 'SVR',
+                                'tiang_tumpu'   => 'TTM',
+                                'tiang_loop'    => 'TLP',
+                                'slack_loop'    => 'SLK',
+                                'tiang_odp'     => 'TODP',
+                                'tiang_odc'     => 'TODC',
+                                'joint_closure' => 'JC',
+                                'htb_ap'        => 'HTB',
+                            ][$kategori] ?? 'ITEM';
+
+                            $uniqueKode = $prefix . '-' . $timeSeed . '-' . str_pad($importedPoints + 1, 4, '0', STR_PAD_LEFT);
+
+                            FtthItem::create([
+                                'kategori'   => $kategori,
+                                'nama'       => $name ?: ("Point #" . ($importedPoints + 1)),
+                                'kode'       => $uniqueKode,
+                                'latitude'   => $lat,
+                                'longitude'  => $lng,
+                                'status'     => 'online',
+                                'deskripsi'  => $desc ?: null,
+                                'updated_by' => Auth::user()->name ?? 'kmz_import',
+                            ]);
+
+                            $importedPoints++;
+                        }
+                    }
+                }
+
+                // 2. Check for LineString (Fiber Optic Cable Polylines)
+                $lineCoords = null;
+                if (isset($pm->LineString->coordinates)) {
+                    $lineCoords = (string) $pm->LineString->coordinates;
+                } elseif (isset($pm->MultiGeometry->LineString->coordinates)) {
+                    $lineCoords = (string) $pm->MultiGeometry->LineString->coordinates;
+                }
+
+                if ($lineCoords) {
+                    $rawPairs = preg_split('/\s+/', trim($lineCoords));
+                    $geometry = [];
+
+                    foreach ($rawPairs as $pair) {
+                        $pairParts = explode(',', trim($pair));
+                        if (count($pairParts) >= 2) {
+                            $cLng = (float) trim($pairParts[0]);
+                            $cLat = (float) trim($pairParts[1]);
+                            if ($cLat != 0 || $cLng != 0) {
+                                $geometry[] = [$cLat, $cLng];
+                            }
+                        }
+                    }
+
+                    if (count($geometry) >= 2) {
+                        $cableType = 'distribusi';
+                        if (str_contains($searchStr, 'feeder') || str_contains($searchStr, 'troncal') || str_contains($searchStr, 'main')) {
+                            $cableType = 'feeder';
+                        } elseif (str_contains($searchStr, 'drop') || str_contains($searchStr, 'acceso') || str_contains($searchStr, 'cliente')) {
+                            $cableType = 'drop';
+                        } elseif (str_contains($searchStr, 'backbone')) {
+                            $cableType = 'backbone';
+                        }
+
+                        $colorMap = [
+                            'feeder' => '#0284c7',
+                            'distribusi' => '#d97706',
+                            'backbone' => '#8b5cf6',
+                            'drop' => '#2563eb'
+                        ];
+
+                        Kabel::create([
+                            'label'           => $name ?: ("Kabel FO #" . ($importedCables + 1)),
+                            'tipe'            => $cableType,
+                            'color'           => $colorMap[$cableType] ?? '#0284c7',
+                            'monitoring_type' => 'manual',
+                            'from_type'       => 'olt',
+                            'from_id'         => 1,
+                            'to_type'         => 'odc',
+                            'to_id'           => 1,
+                            'geometry'        => $geometry,
+                            'jumlah_core'     => 12,
+                            'status'          => 'online',
+                            'catatan'         => $desc ?: null,
+                            'updated_by'      => Auth::user()->name ?? 'kmz_import',
+                        ]);
+
+                        $importedCables++;
+                    }
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
+
+        return [
+            'total'  => $importedPoints + $importedCables,
+            'points' => $importedPoints,
+            'cables' => $importedCables,
+        ];
     }
 }
