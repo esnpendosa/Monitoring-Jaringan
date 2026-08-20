@@ -47,7 +47,7 @@
                     
                     <div class="mb-3">
                         <label class="form-label fw-bold">Judul Notifikasi <span class="text-danger">*</span></label>
-                        <input type="text" name="title" class="form-control" placeholder="Contoh: ⚠️ Pengumuman Pemeliharaan Jaringan" required>
+                        <input type="text" name="title" class="form-control" placeholder="Contoh: Pengumuman Pemeliharaan Jaringan" required>
                     </div>
 
                     <div class="mb-3">
@@ -58,21 +58,21 @@
                     <div class="mb-3">
                         <label class="form-label fw-bold">Target Penerima <span class="text-danger">*</span></label>
                         <select name="target" class="form-select" required>
-                            <option value="all">🌐 Semua Pengguna (Broadcast Publik)</option>
-                            <option value="Admin">🛡️ Khusus Admin Sistem ({{ $adminCount }} user)</option>
-                            <option value="Teknisi">🔧 Khusus Tim Teknisi ({{ $teknisiCount }} user)</option>
-                            <option value="Pelanggan">👤 Khusus Pelanggan</option>
+                            <option value="all">Semua Pengguna (Broadcast Publik)</option>
+                            <option value="Admin">Khusus Admin Sistem ({{ $adminCount }} user)</option>
+                            <option value="Teknisi">Khusus Tim Teknisi ({{ $teknisiCount }} user)</option>
+                            <option value="Pelanggan">Khusus Pelanggan</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold">Tipe & Warna Alert</label>
                         <select name="color" class="form-select">
-                            <option value="primary">🟣 Primary (Informasi Umum)</option>
-                            <option value="success">🟢 Success (Pembayaran / Pengumuman Positif)</option>
-                            <option value="warning">🟡 Warning (Peringatan / Maintenance)</option>
-                            <option value="danger">🔴 Danger (Gangguan / Kritis)</option>
-                            <option value="info">🔵 Info (Pemberitahuan)</option>
+                            <option value="primary">Primary (Informasi Umum)</option>
+                            <option value="success">Success (Pembayaran / Pengumuman Positif)</option>
+                            <option value="warning">Warning (Peringatan / Maintenance)</option>
+                            <option value="danger">Danger (Gangguan / Kritis)</option>
+                            <option value="info">Info (Pemberitahuan)</option>
                         </select>
                     </div>
 
@@ -120,7 +120,7 @@
                                 <strong class="d-block text-dark">{{ $n->title }}</strong>
                                 <small class="text-muted">{{ Str::limit($n->body, 80) }}</small>
                                 @if($n->action_url)
-                                <div><a href="{{ $n->action_url }}" target="_blank" class="small text-primary text-decoration-none">🔗 Link Tautan</a></div>
+                                <div><a href="{{ $n->action_url }}" target="_blank" class="small text-primary text-decoration-none">Link Tautan</a></div>
                                 @endif
                             </td>
                             <td class="small text-muted" style="white-space: nowrap;">

@@ -112,12 +112,12 @@ class TelegramBotController extends Controller
         // 1. Sapaan Ramah: halo, hi, p, bot, ping, tes, pagi, siang, malam, salam
         $greetings = ['halo', 'hi', 'p', 'bot', 'ping', 'tes', 'pagi', 'siang', 'malam', 'assalamualaikum', 'salam'];
         if (in_array($lowerText, $greetings)) {
-            $msg = "Halo Kak <b>" . htmlspecialchars($firstName) . "</b>! 👋\n\n";
+            $msg = "Halo Kak <b>" . htmlspecialchars($firstName) . "</b>!\n\n";
             $msg .= "Selamat datang di <b>Rozitech Network Bot</b>!\n\n";
             $msg .= "Ada yang bisa kami bantu? Ketik <b>/menu</b> atau <b>menu</b> untuk melihat daftar layanan otomatis kami:\n\n";
-            $msg .= "💳 <code>/bayar</code> → Cek Tagihan & Pembayaran Otomatis\n";
-            $msg .= "🎫 <code>/tiket [keluhan]</code> → Lapor Gangguan Jaringan\n";
-            $msg .= "📡 <code>/status</code> → Cek Status Sinyal ONT & Paket";
+            $msg .= "[BAYAR] <code>/bayar</code> -> Cek Tagihan & Pembayaran Otomatis\n";
+            $msg .= "[TIKET] <code>/tiket [keluhan]</code> -> Lapor Gangguan Jaringan\n";
+            $msg .= "[STATUS] <code>/status</code> -> Cek Status Sinyal ONT & Paket";
             $this->telegramService->sendMessage($chatId, $msg);
             return response()->json(['status' => 'greeting_sent']);
         }
@@ -162,7 +162,7 @@ class TelegramBotController extends Controller
         }
 
         // Fallback default
-        $defaultMsg = "🤖 <b>ROZITECH TELEGRAM BOT</b>\n\nHalo Kak <b>" . htmlspecialchars($firstName) . "</b>, ketik <b>/menu</b> atau <b>menu</b> untuk melihat daftar opsi bantuan otomatis.";
+        $defaultMsg = "<b>ROZITECH TELEGRAM BOT</b>\n\nHalo Kak <b>" . htmlspecialchars($firstName) . "</b>, ketik <b>/menu</b> atau <b>menu</b> untuk melihat daftar opsi bantuan otomatis.";
         $this->telegramService->sendMessage($chatId, $defaultMsg);
         return response()->json(['status' => 'default_reply']);
     }
@@ -172,16 +172,16 @@ class TelegramBotController extends Controller
      */
     protected function sendMenu($chatId, $firstName)
     {
-        $msg = "<b>🤖 SELAMAT DATANG DI ROZITECH BOT AUTOMATION</b>\n";
-        $msg .= "Halo Kak <b>" . htmlspecialchars($firstName) . "</b>! 👋\n\n";
+        $msg = "<b>SELAMAT DATANG DI ROZITECH BOT AUTOMATION</b>\n";
+        $msg .= "Halo Kak <b>" . htmlspecialchars($firstName) . "</b>!\n\n";
         $msg .= "Silakan pilih layanan otomatis yang Anda butuhkan:\n\n";
-        $msg .= "💳 <b>PULUS & PEMBAYARAN</b>\n";
-        $msg .= "• Ketik <code>/bayar</code> atau <code>TAGIHAN</code> → Cek rincian tagihan & Pembayaran Otomatis via QRIS/VA\n\n";
-        $msg .= "🎫 <b>TICKETING & GANGGUAN</b>\n";
-        $msg .= "• Ketik <code>/tiket [keluhan]</code> atau <code>LAPOR [keluhan]</code> → Buat tiket penanganan teknisi otomatis\n\n";
-        $msg .= "📡 <b>MONITORING KONEKSI</b>\n";
-        $msg .= "• Ketik <code>/status</code> → Cek status ONT, redaman sinyal RX (dBm), & paket aktif\n\n";
-        $msg .= "💬 <b>CUSTOMER SERVICE</b>\n";
+        $msg .= "<b>[PEMBAYARAN]</b>\n";
+        $msg .= "• Ketik <code>/bayar</code> atau <code>TAGIHAN</code> -> Cek rincian tagihan & Pembayaran Otomatis via QRIS/VA\n\n";
+        $msg .= "<b>[TICKETING & GANGGUAN]</b>\n";
+        $msg .= "• Ketik <code>/tiket [keluhan]</code> atau <code>LAPOR [keluhan]</code> -> Buat tiket penanganan teknisi otomatis\n\n";
+        $msg .= "<b>[MONITORING KONEKSI]</b>\n";
+        $msg .= "• Ketik <code>/status</code> -> Cek status ONT, redaman sinyal RX (dBm), & paket aktif\n\n";
+        $msg .= "<b>[CUSTOMER SERVICE]</b>\n";
         $msg .= "• Ketik <code>CS</code> untuk terhubung langsung dengan Tim Support Rozitech.";
 
         $this->telegramService->sendMessage($chatId, $msg);
@@ -227,7 +227,7 @@ class TelegramBotController extends Controller
         $pelanggan = $this->findCustomer($code);
 
         if (!$pelanggan) {
-            $msg = "💳 <b>CEK TAGIHAN & PEMBAYARAN OTOMATIS</b>\n\n";
+            $msg = "<b>CEK TAGIHAN & PEMBAYARAN OTOMATIS</b>\n\n";
             $msg .= "Silakan ketik <code>/bayar [KODE_PELANGGAN]</code>\n";
             $msg .= "Contoh: <code>/bayar KTR01</code>\n\n";
             $msg .= "<i>Anda dapat melihat Kode Pelanggan pada stiker router ONT Anda.</i>";
@@ -240,16 +240,16 @@ class TelegramBotController extends Controller
             ->get();
 
         if ($tagihanUnpaid->isEmpty()) {
-            $msg = "✅ <b>STATUS TAGIHAN LUNAS</b>\n\n";
+            $msg = "<b>STATUS TAGIHAN LUNAS</b>\n\n";
             $msg .= "Pelanggan: <b>" . htmlspecialchars($pelanggan->nama_pelanggan) . "</b> (" . $pelanggan->kode_pelanggan . ")\n";
-            $msg .= "Status: 🟢 <b>LUNAS (Tidak ada tunggakan)</b>\n\n";
-            $msg .= "Terima kasih telah menggunakan layanan Rozitech Network! 🙏";
+            $msg .= "Status: <b>LUNAS (Tidak ada tunggakan)</b>\n\n";
+            $msg .= "Terima kasih telah menggunakan layanan Rozitech Network!";
             $this->telegramService->sendMessage($chatId, $msg);
             return response()->json(['status' => 'paid']);
         }
 
         $total = 0;
-        $info  = "💳 <b>RINCIAN TAGIHAN UNPAID</b>\n";
+        $info  = "<b>RINCIAN TAGIHAN UNPAID</b>\n";
         $info .= "--------------------------------------\n";
         $info .= "Pelanggan: <b>" . htmlspecialchars($pelanggan->nama_pelanggan) . "</b> (" . $pelanggan->kode_pelanggan . ")\n";
         $info .= "Paket: <b>" . htmlspecialchars($pelanggan->paket ?? 'Paket WiFi') . "</b>\n";
@@ -264,8 +264,8 @@ class TelegramBotController extends Controller
 
         $info .= "--------------------------------------\n";
         $info .= "<b>TOTAL TAGIHAN: Rp " . number_format($total, 0, ',', '.') . "</b>\n\n";
-        $info .= "🔗 <b>LINK PEMBAYARAN OTOMATIS:</b>\n";
-        $info .= "<a href=\"{$paymentUrl}\">👉 Klik Di Sini Untuk Bayar (QRIS/Transfer/E-Wallet)</a>\n\n";
+        $info .= "<b>LINK PEMBAYARAN OTOMATIS:</b>\n";
+        $info .= "<a href=\"{$paymentUrl}\">Klik Di Sini Untuk Bayar (QRIS/Transfer/E-Wallet)</a>\n\n";
         $info .= "<i>Setelah pembayaran selesai di link di atas, koneksi internet Anda akan otomatis aktif kembali secara instan!</i>";
 
         $this->telegramService->sendMessage($chatId, $info);
@@ -297,7 +297,7 @@ class TelegramBotController extends Controller
         try {
             \App\Helpers\NotificationHelper::sendToAll(
                 'tiket_baru',
-                '🎫 Tiket Gangguan Baru (Telegram)',
+                'Tiket Gangguan Baru (Telegram)',
                 "Tiket #{$kodeTiket} dari {$pelangganName}: {$keluhan}",
                 [
                     'icon'       => 'bx-error-circle',
@@ -309,18 +309,18 @@ class TelegramBotController extends Controller
             Log::error('In-app notification broadcast error: ' . $e->getMessage());
         }
 
-        $reply = "🎫 <b>TIKET GANGGUAN BERHASIL DIBUAT!</b>\n";
+        $reply = "<b>TIKET GANGGUAN BERHASIL DIBUAT!</b>\n";
         $reply .= "--------------------------------------\n";
         $reply .= "No Tiket  : <code>{$kodeTiket}</code>\n";
         $reply .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan ?? $firstName) . "</b>\n";
         $reply .= "Keluhan   : <i>" . htmlspecialchars($keluhan) . "</i>\n";
-        $reply .= "Status    : 🟡 <b>OPEN (Dalam Antrean Teknisi)</b>\n";
+        $reply .= "Status    : <b>OPEN (Dalam Antrean Teknisi)</b>\n";
         $reply .= "--------------------------------------\n";
         $reply .= "Notifikasi laporan ini telah otomatis diteruskan ke Tim Teknisi & Manajer Support. Terima kasih!";
 
         $this->telegramService->sendMessage($chatId, $reply);
 
-        $adminAlert = "⚠️ <b>TIKET GANGGUAN BARU (#{$kodeTiket})</b>\n";
+        $adminAlert = "<b>TIKET GANGGUAN BARU (#{$kodeTiket})</b>\n";
         $adminAlert .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan ?? $firstName) . "</b>\n";
         $adminAlert .= "No WA     : " . ($pelanggan->no_wa ?? '-') . "\n";
         $adminAlert .= "Keluhan   : " . htmlspecialchars($keluhan) . "\n";
@@ -341,7 +341,7 @@ class TelegramBotController extends Controller
         $pelanggan = $this->findCustomer($code);
 
         if (!$pelanggan) {
-            $msg = "📡 <b>MONITORING STATUS KONEKSI ONT</b>\n\n";
+            $msg = "<b>MONITORING STATUS KONEKSI ONT</b>\n\n";
             $msg .= "Silakan ketik: <code>/status [KODE_PELANGGAN]</code>\n";
             $msg .= "Contoh: <code>/status KTR01</code>";
             $this->telegramService->sendMessage($chatId, $msg);
@@ -349,15 +349,15 @@ class TelegramBotController extends Controller
         }
 
         $rx = $pelanggan->onu_rx_power ? number_format($pelanggan->onu_rx_power, 2) . " dBm" : "N/A";
-        $statusOnt = $pelanggan->is_online ? "🟢 <b>ONLINE</b>" : "🔴 <b>OFFLINE / LOS</b>";
+        $statusOnt = $pelanggan->is_online ? "<b>ONLINE</b>" : "<b>OFFLINE / LOS</b>";
 
-        $msg = "📡 <b>STATUS MONITORING KONEKSI PELANGGAN</b>\n";
+        $msg = "<b>STATUS MONITORING KONEKSI PELANGGAN</b>\n";
         $msg .= "--------------------------------------\n";
         $msg .= "Pelanggan : <b>" . htmlspecialchars($pelanggan->nama_pelanggan) . "</b> (" . $pelanggan->kode_pelanggan . ")\n";
         $msg .= "Status ONT: {$statusOnt}\n";
         $msg .= "Redaman RX: <b>{$rx}</b>\n";
         $msg .= "Paket     : " . htmlspecialchars($pelanggan->paket ?? 'Internet') . "\n";
-        $msg .= "Terisolir : " . ($pelanggan->is_isolated ? "🔴 YA (Tunggakan Bayar)" : "🟢 TIDAK (Normal)") . "\n";
+        $msg .= "Terisolir : " . ($pelanggan->is_isolated ? "YA (Tunggakan Bayar)" : "TIDAK (Normal)") . "\n";
         $msg .= "Terakhir Inform: " . ($pelanggan->last_inform_at ? $pelanggan->last_inform_at : '-') . "\n";
         $msg .= "--------------------------------------";
 
@@ -397,7 +397,7 @@ class TelegramBotController extends Controller
                     'contents' => [
                         [
                             'parts' => [
-                                ['text' => "Kamu adalah AI Customer Support Rozitech NMS (ISP & FTTH). Jawab dengan sopan, ringkas, & ramah kepada pelanggan bernama {$userName}. Pertanyaan: {$prompt}"]
+                                ['text' => "Kamu adalah AI Customer Support Rozitech NMS (ISP & FTTH). Jawab dengan sopan, ringkas, & ramah tanpa menggunakan emoji/stiker kepada pelanggan bernama {$userName}. Pertanyaan: {$prompt}"]
                             ]
                         ]
                     ]
