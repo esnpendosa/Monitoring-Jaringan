@@ -1420,6 +1420,25 @@ var autoRefreshTimer;
 
 var isPanning = false;
 
+function checkZoomVisibility() {
+  if (!MAP) return;
+  var z = MAP.getZoom();
+
+  if (z < 14) {
+    if (MAP.hasLayer(L_LABEL)) MAP.removeLayer(L_LABEL);
+  } else {
+    if (showLabels && !MAP.hasLayer(L_LABEL)) MAP.addLayer(L_LABEL);
+  }
+
+  if (z < 12) {
+    if (MAP.hasLayer(L_ITEM)) MAP.removeLayer(L_ITEM);
+    if (MAP.hasLayer(L_ODP)) MAP.removeLayer(L_ODP);
+  } else {
+    if (!MAP.hasLayer(L_ITEM)) MAP.addLayer(L_ITEM);
+    if (!MAP.hasLayer(L_ODP)) MAP.addLayer(L_ODP);
+  }
+}
+
 // ──────────────── INIT ──────────────────────────────────────────────
 function initMap() {
   try {
@@ -1448,7 +1467,8 @@ function initMap() {
     L.control.zoom({position:'bottomright'}).addTo(MAP);
 
     MAP.on('movestart', () => { isPanning = true; });
-    MAP.on('moveend', () => { isPanning = false; });
+    MAP.on('moveend', () => { isPanning = false; checkZoomVisibility(); });
+    MAP.on('zoomend', checkZoomVisibility);
 
     var lastMoveTime = 0;
     MAP.on('mousemove', e => {
@@ -1540,6 +1560,7 @@ function renderAll(silent = false) {
     if (!silent) {
       fitAll(true);
     }
+    checkZoomVisibility();
   } catch(e) {
     console.error('Render all error:', e);
   }
