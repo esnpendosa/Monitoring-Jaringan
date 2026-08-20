@@ -303,14 +303,16 @@ Route::middleware(['auth'])->group(function () {
         Route::post('whatsapp/session/pairing', [\App\Http\Controllers\WhatsappManagementController::class, 'pairing'])->name('whatsapp.session.pairing');
         Route::post('whatsapp/session/stop', [\App\Http\Controllers\WhatsappManagementController::class, 'stop'])->name('whatsapp.session.stop');
         Route::post('whatsapp/bot/start', [\App\Http\Controllers\WhatsappManagementController::class, 'startBotProcess'])->name('whatsapp.bot.start');
-        Route::post('whatsapp/config/save', [\App\Http\Controllers\WhatsappManagementController::class, 'saveConfig'])->name('whatsapp.config.save');
-        Route::post('whatsapp/config/test', [\App\Http\Controllers\WhatsappManagementController::class, 'testConnection'])->name('whatsapp.config.test');
         
         // WA Status Scheduler
         Route::get('whatsapp/status-schedule', [\App\Http\Controllers\WaStatusScheduleController::class, 'index'])->name('whatsapp.status.index');
         Route::post('whatsapp/status-schedule', [\App\Http\Controllers\WaStatusScheduleController::class, 'store'])->name('whatsapp.status.store');
         Route::post('whatsapp/status-schedule/{schedule}/publish', [\App\Http\Controllers\WaStatusScheduleController::class, 'publishImmediately'])->name('whatsapp.status.publish-now');
-        Route::delete('whatsapp/status-schedule/{schedule}', [\App\Http\Controllers\WaStatusScheduleController::class, 'destroy'])->name('whatsapp.status.destroy');
+        // Telegram Bot Manager
+        Route::get('telegram/manager', [\App\Http\Controllers\TelegramManagementController::class, 'index'])->name('telegram.index');
+        Route::post('telegram/manager/update', [\App\Http\Controllers\TelegramManagementController::class, 'update'])->name('telegram.update');
+        Route::post('telegram/manager/set-webhook', [\App\Http\Controllers\TelegramManagementController::class, 'setWebhook'])->name('telegram.webhook.set');
+        Route::post('telegram/manager/test', [\App\Http\Controllers\TelegramManagementController::class, 'testMessage'])->name('telegram.test');
     });
 
     // Chatbot Management

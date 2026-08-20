@@ -180,6 +180,13 @@
       "permission": "user_manage"
     },
     {
+      "url": "/telegram/manager",
+      "name": "Telegram Bot Manager",
+      "icon": "menu-icon icon-base bx bxl-telegram",
+      "slug": "telegram-manager",
+      "permission": "user_manage"
+    },
+    {
       "url": "/whatsapp/status-schedule",
       "name": "Penjadwal Status WA",
       "icon": "menu-icon icon-base bx bx-time-five",

@@ -11,22 +11,13 @@ class WhatsappClient
 
     public function __construct()
     {
-        $customUrl = \App\Models\Setting::get('whatsapp_bot_url');
-        if (!empty($customUrl)) {
-            $this->baseUrl = rtrim($customUrl, '/');
-        } else {
-            $port = \App\Models\Setting::get('whatsapp_bot_port', config('services.whatsapp_bot.port', env('BOT_PORT', 3000)));
-            $host = \App\Models\Setting::get('whatsapp_bot_host', '127.0.0.1');
-            $this->baseUrl = "http://{$host}:{$port}";
-        }
+        $port = config('services.whatsapp_bot.port', env('BOT_PORT', 3000));
+        $this->baseUrl = "http://127.0.0.1:{$port}";
     }
 
     protected function secret()
     {
-        $dbSecret = \App\Models\Setting::get('whatsapp_bot_secret');
-        if (!empty($dbSecret)) {
-            return $dbSecret;
-        }
+        // Gunakan config() agar bekerja saat config cache aktif, fallback ke env() langsung
         return config('services.whatsapp_bot.secret', env('BOT_SECRET', 'rozitech-bot-secret-2024'));
     }
 
