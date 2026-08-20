@@ -84,6 +84,12 @@
       "permission": "user_manage"
     },
     {
+      "url": "/notifications/broadcast",
+      "name": "Broadcast Notifikasi PWA",
+      "icon": "menu-icon icon-base bx bx-broadcast",
+      "slug": "notifications-broadcast"
+    },
+    {
       "menuHeader": "Keuangan"
     },
     {

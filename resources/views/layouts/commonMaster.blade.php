@@ -25,6 +25,14 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon/favicon.ico') }}" />
 
+    <!-- PWA Web App Manifest & Mobile Support -->
+    <link rel="manifest" href="{{ asset('manifest.json') }}" />
+    <meta name="theme-color" content="#6366f1" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Rozitech NMS" />
+    <link rel="apple-touch-icon" href="{{ asset('assets/img/pwa/icon-192x192.png') }}" />
+
     <!-- Include Styles -->
     @include('layouts/sections/styles')
 
@@ -37,10 +45,45 @@
     @yield('layoutContent')
     <!--/ Layout Content -->
 
-    
-
     <!-- Include Scripts -->
     @include('layouts/sections/scripts')
+
+    <!-- PWA Service Worker & Install Prompt script -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ asset("sw.js") }}')
+                    .then(function(reg) {
+                        console.log('Rozitech PWA Service Worker registered:', reg.scope);
+                    })
+                    .catch(function(err) {
+                        console.error('Service Worker registration failed:', err);
+                    });
+            });
+        }
+
+        let deferredPwaPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPwaPrompt = e;
+            const pwaBtn = document.getElementById('pwaInstallBtn');
+            if (pwaBtn) pwaBtn.style.display = 'inline-flex';
+        });
+
+        function installPwaApp() {
+            if (deferredPwaPrompt) {
+                deferredPwaPrompt.prompt();
+                deferredPwaPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted PWA installation');
+                    }
+                    deferredPwaPrompt = null;
+                });
+            } else {
+                alert('Aplikasi Rozitech NMS siap di-install! Gunakan menu browser (Titik 3) -> "Tambahkan ke Layar Utama" / "Install Aplikasi".');
+            }
+        }
+    </script>
 </body>
 
 </html>

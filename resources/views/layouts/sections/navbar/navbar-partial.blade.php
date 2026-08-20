@@ -27,6 +27,9 @@ use Illuminate\Support\Facades\Route;
     <!-- Quick Actions & Clock -->
     <div class="navbar-nav align-items-center">
         <div class="nav-item d-flex align-items-center">
+            <button id="pwaInstallBtn" onclick="installPwaApp()" class="btn btn-sm btn-success rounded-pill me-3 shadow-sm" title="Install Aplikasi Rozitech NMS di Android/Desktop">
+                <i class="bx bx-mobile-alt me-1"></i> <span class="d-none d-sm-inline-block">Install App PWA</span>
+            </button>
             <a href="{{ route('tiket.create') }}" class="btn btn-sm btn-primary rounded-pill d-flex align-items-center me-3 shadow-sm" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Buat Tiket Gangguan Baru">
                 <i class="bx bx-plus-circle me-1"></i> <span class="d-none d-sm-inline-block">Tiket Baru</span>
             </a>

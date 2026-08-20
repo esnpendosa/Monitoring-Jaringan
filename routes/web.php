@@ -323,8 +323,10 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('bot/responses/{bot}', [\App\Http\Controllers\BotResponseController::class, 'destroy'])->name('bot.destroy');
 
     // =========================================================
-    // Notifikasi In-App (+ SSE Real-time Stream)
+    // Notifikasi In-App (+ SSE Real-time Stream & Custom Broadcast)
     // =========================================================
+    Route::get('notifications/broadcast', [\App\Http\Controllers\BroadcastNotificationController::class, 'index'])->name('notifications.broadcast.index');
+    Route::post('notifications/broadcast', [\App\Http\Controllers\BroadcastNotificationController::class, 'send'])->name('notifications.broadcast.send');
     Route::get('notifications/stream', [NotificationController::class, 'stream'])->name('notifications.stream');
     Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('notifications/count', [NotificationController::class, 'count'])->name('notifications.count');

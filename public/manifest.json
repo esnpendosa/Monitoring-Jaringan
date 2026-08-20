@@ -1,0 +1,25 @@
+{
+  "name": "Rozitech Network Management System",
+  "short_name": "Rozitech NMS",
+  "description": "Sistem Manajemen Jaringan WiFi & FTTH Berbasis Web GIS",
+  "start_url": "/net.rozitech.co.id/public/",
+  "scope": "/net.rozitech.co.id/public/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/net.rozitech.co.id/public/assets/img/pwa/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/net.rozitech.co.id/public/assets/img/pwa/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
