@@ -303,6 +303,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('whatsapp/session/pairing', [\App\Http\Controllers\WhatsappManagementController::class, 'pairing'])->name('whatsapp.session.pairing');
         Route::post('whatsapp/session/stop', [\App\Http\Controllers\WhatsappManagementController::class, 'stop'])->name('whatsapp.session.stop');
         Route::post('whatsapp/bot/start', [\App\Http\Controllers\WhatsappManagementController::class, 'startBotProcess'])->name('whatsapp.bot.start');
+        Route::post('whatsapp/config/save', [\App\Http\Controllers\WhatsappManagementController::class, 'saveConfig'])->name('whatsapp.config.save');
+        Route::post('whatsapp/config/test', [\App\Http\Controllers\WhatsappManagementController::class, 'testConnection'])->name('whatsapp.config.test');
         
         // WA Status Scheduler
         Route::get('whatsapp/status-schedule', [\App\Http\Controllers\WaStatusScheduleController::class, 'index'])->name('whatsapp.status.index');
