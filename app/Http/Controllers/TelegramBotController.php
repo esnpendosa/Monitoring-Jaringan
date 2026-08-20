@@ -57,6 +57,9 @@ class TelegramBotController extends Controller
         $offset = cache()->get('telegram_last_offset', 0);
 
         try {
+            // Delete active webhook if any to allow getUpdates
+            $this->telegramService->deleteWebhook(false);
+
             $response = Http::timeout(10)->get("https://api.telegram.org/bot{$token}/getUpdates", [
                 'offset' => $offset,
                 'limit' => 20

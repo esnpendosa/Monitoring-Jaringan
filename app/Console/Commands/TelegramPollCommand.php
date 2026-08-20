@@ -23,6 +23,13 @@ class TelegramPollCommand extends Command
 
         $token = $setting->bot_token;
         $this->info("🚀 Starting Telegram Bot Polling (Token: ... " . substr($token, -6) . ")...");
+        $this->info("Clearing active webhooks to allow long polling...");
+        
+        // Remove any conflicting webhook so getUpdates works
+        try {
+            Http::post("https://api.telegram.org/bot{$token}/deleteWebhook", ['drop_pending_updates' => false]);
+        } catch (\Exception $e) {}
+
         $this->info("Tekan Ctrl+C untuk menghentikan.");
 
         $offset = cache()->get('telegram_last_offset', 0);

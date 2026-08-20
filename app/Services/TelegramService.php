@@ -90,4 +90,23 @@ class TelegramService
             return false;
         }
     }
+
+    /**
+     * Delete Telegram Webhook to enable Long Polling / getUpdates
+     */
+    public function deleteWebhook(bool $dropPendingUpdates = false)
+    {
+        $token = $this->getBotToken();
+        if (empty($token)) return false;
+
+        try {
+            $res = Http::post("https://api.telegram.org/bot{$token}/deleteWebhook", [
+                'drop_pending_updates' => $dropPendingUpdates
+            ]);
+            return $res->json();
+        } catch (\Exception $e) {
+            Log::error("Telegram deleteWebhook error: " . $e->getMessage());
+            return false;
+        }
+    }
 }
