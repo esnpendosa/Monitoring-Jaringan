@@ -1421,7 +1421,7 @@ var autoRefreshTimer;
 // ──────────────── INIT ──────────────────────────────────────────────
 function initMap() {
   try {
-    MAP = L.map('ftth-map',{center:[-7.1207,112.5959],zoom:14,zoomControl:false,attributionControl:false});
+    MAP = L.map('ftth-map',{center:[-7.1207,112.5959],zoom:14,zoomControl:false,attributionControl:false,preferCanvas:true});
 
     satTile   = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{attribution:'© Google Earth Satellite',maxZoom:20});
     darkTile  = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19,subdomains:['a','b','c','d']});
@@ -1433,7 +1433,11 @@ function initMap() {
     [L_CABLE,L_LABEL,L_ITEM,L_ODP,L_ODC,L_OLT,L_ONT].forEach(l => l.addTo(MAP));
     L.control.zoom({position:'bottomright'}).addTo(MAP);
 
+    var lastMoveTime = 0;
     MAP.on('mousemove', e => {
+      var now = Date.now();
+      if (now - lastMoveTime < 100) return;
+      lastMoveTime = now;
       var c = document.getElementById('st-coords');
       if (c && e.latlng) c.textContent = `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
     });
@@ -1766,24 +1770,26 @@ function renderKabel(k) {
   labelReg[`lbl_${k.id}`] = labelTooltip;
   if (showLabels) L_LABEL.addLayer(labelTooltip);
 
-  // Segment Distance Pills: Tampilkan hanya jika jarak segmen cukup panjang (>= 35 meter) agar tidak menumpuk berantakan
-  for (var i = 0; i < k.geometry.length - 1; i++) {
-    var p1 = L.latLng(k.geometry[i][0], k.geometry[i][1]);
-    var p2 = L.latLng(k.geometry[i+1][0], k.geometry[i+1][1]);
-    var distMeters = Math.round(p1.distanceTo(p2));
-    
-    // Jangan buat pill untuk segmen tikungan kecil (< 35m) agar peta tetap bersih dan rapi
-    if (distMeters < 35 && k.geometry.length > 3) continue;
+  // Segment Distance Pills: Tampilkan hanya jika jumlah segmen sedikit (<= 15) agar ringan & cepat
+  if (k.geometry.length <= 15) {
+    for (var i = 0; i < k.geometry.length - 1; i++) {
+      var p1 = L.latLng(k.geometry[i][0], k.geometry[i][1]);
+      var p2 = L.latLng(k.geometry[i+1][0], k.geometry[i+1][1]);
+      var distMeters = Math.round(p1.distanceTo(p2));
+      
+      // Jangan buat pill untuk segmen tikungan kecil (< 50m) agar peta tetap bersih & super cepat
+      if (distMeters < 50 && k.geometry.length > 4) continue;
 
-    var midLat = (k.geometry[i][0] + k.geometry[i+1][0]) / 2;
-    var midLng = (k.geometry[i][1] + k.geometry[i+1][1]) / 2;
+      var midLat = (k.geometry[i][0] + k.geometry[i+1][0]) / 2;
+      var midLng = (k.geometry[i][1] + k.geometry[i+1][1]) / 2;
 
-    var distTooltip = L.tooltip({
-      permanent: true, direction: 'center', className: 'cable-dist-pill', interactive: false
-    }).setLatLng([midLat, midLng]).setContent(`${distMeters} m`);
+      var distTooltip = L.tooltip({
+        permanent: true, direction: 'center', className: 'cable-dist-pill', interactive: false
+      }).setLatLng([midLat, midLng]).setContent(`${distMeters} m`);
 
-    labelReg[`dist_${k.id}_${i}`] = distTooltip;
-    if (showLabels) L_LABEL.addLayer(distTooltip);
+      labelReg[`dist_${k.id}_${i}`] = distTooltip;
+      if (showLabels) L_LABEL.addLayer(distTooltip);
+    }
   }
 
   if (k.status === 'offline' && k.titik_putus_meter) {
@@ -1849,7 +1855,7 @@ function makeItemIcon(kategori, status, name, desc) {
   return L.divIcon({
     className: '',
     html: `<div style="display:flex;flex-direction:column;align-items:center;cursor:pointer;">
-            <div style="display:flex;align-items:center;justify-content:center;filter:drop-shadow(0px 2px 4px rgba(0,0,0,0.35));">
+            <div style="display:flex;align-items:center;justify-content:center;">
               ${svgContent}
             </div>
             ${nameHtml}
